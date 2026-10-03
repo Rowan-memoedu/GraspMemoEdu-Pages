@@ -1,7 +1,7 @@
-import { t, translateMessage, learningTitle } from './i18n.js?v=e510364d1ede8b9a';
-import {questionInput, answerReady} from './question-input.js?v=e510364d1ede8b9a';
-import {reportableContent} from './content-report.js?v=e510364d1ede8b9a';
-import {createLearningCache} from './learning-cache.js?v=e510364d1ede8b9a';
+import { t, translateMessage, learningTitle } from './i18n.js?v=5c1d9a1a6408ac9a';
+import {questionInput, answerReady} from './question-input.js?v=5c1d9a1a6408ac9a';
+import {reportableContent} from './content-report.js?v=5c1d9a1a6408ac9a';
+import {createLearningCache} from './learning-cache.js?v=5c1d9a1a6408ac9a';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -209,7 +209,7 @@ export function createReviewView(bridge) {
     const stem = content(question.html);
     const questionId = isCurrent ? state.practice.id : answer.question_id;
     const reportContext = {topic_id: topic, question_id: questionId, task_id: `review:${state.session_id}`};
-    reportableContent(stem, reportContext, `question:${questionId}`, state.course_version);
+    reportableContent(stem, reportContext, `question:${questionId}`, question.content_version || state.course_version);
     const editable = isCurrent && state.status === 'in_progress' && state.actions.includes('submit');
     const structured = question.interaction && question.interaction.type !== 'text';
     card.append(node('h2', 'stepTitle', t('review.questionNumber', {number: index + 1})), stem);
@@ -225,7 +225,7 @@ export function createReviewView(bridge) {
       if (feedback.reason) detail.append(node('p', 'feedbackReason', feedback.reason));
       box.append(node('span', 'feedbackIcon', feedback.correct ? '✓' : '!'), detail); card.append(box);
       if (question.explanation_html) card.append(node('h3', 'exampleExplanationHeader', t('Explanation · 解析')),
-        reportableContent(content(question.explanation_html), reportContext, `explanation:${questionId}`, state.course_version));
+        reportableContent(content(question.explanation_html), reportContext, `explanation:${questionId}`, question.content_version || state.course_version));
     }
     if (editable) {
       const form = node('form', 'learningActions answerForm'); form.id = 'reviewAnswerForm'; form.addEventListener('submit', submit);
@@ -237,7 +237,7 @@ export function createReviewView(bridge) {
       input.addEventListener('input', () => { write(draftKey(), input.value); root.querySelector('#reviewSubmitButton').disabled = busy || !answerReady(input) || !can('submit_answer'); });
       input.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) submit(event); });
       form.append(label, control?.element || input);
-      form.append(node('p', 'inputHint', t(question.interaction?.grading === 'exact' ? 'question.exactHint'
+      form.append(node('p', 'inputHint', t(question.interaction?.type === 'choice' ? 'question.choiceHint' : question.interaction?.grading === 'exact' ? 'question.exactHint'
         : question.interaction?.grading === 'semantic' ? 'question.semanticHint'
         : structured ? 'question.completeHint' : '只要描述清楚正确答案的形式即可，表达方式不限，夹杂口语也没关系。Ctrl + Enter 提交。')));
       card.append(form);

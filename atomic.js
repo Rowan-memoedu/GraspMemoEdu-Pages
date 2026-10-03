@@ -1,7 +1,7 @@
-import {t, translateMessage} from './i18n.js?v=e510364d1ede8b9a';
-import {questionInput, answerReady} from './question-input.js?v=e510364d1ede8b9a';
-import {reportableContent, helpableContent} from './content-report.js?v=e510364d1ede8b9a';
-import {createLearningCache} from './learning-cache.js?v=e510364d1ede8b9a';
+import {t, translateMessage} from './i18n.js?v=5c1d9a1a6408ac9a';
+import {questionInput, answerReady} from './question-input.js?v=5c1d9a1a6408ac9a';
+import {reportableContent, helpableContent} from './content-report.js?v=5c1d9a1a6408ac9a';
+import {createLearningCache} from './learning-cache.js?v=5c1d9a1a6408ac9a';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
@@ -122,6 +122,9 @@ export function createAtomicView(bridge) {
     form.addEventListener('submit', event => { event.preventDefault(); if (!disabled) void submit(input); });
     if (!history && question.phase === 'answer') form.append(send);
     box.append(form);
+    if (!history && question.phase === 'answer' && question.interaction?.type === 'choice') {
+      box.append(node('p', 'inputHint', t('question.choiceHint')));
+    }
     if (!history && question.phase === 'answer' && question.interaction?.grading) {
       box.append(node('p', 'inputHint', t(question.interaction.grading === 'exact' ? 'question.exactHint' : 'question.semanticHint')));
     }
