@@ -1,4 +1,4 @@
-import {t} from './i18n.js?v=7751db6e04572b2f';
+import {t} from './i18n.js?v=6d29867e0d7351ea';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;

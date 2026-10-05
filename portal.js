@@ -1,18 +1,19 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=7751db6e04572b2f";
-import { createReviewView } from "./review.js?v=7751db6e04572b2f";
-import { renderCourseGraph } from "./course-graph.js?v=7751db6e04572b2f";
-import {questionInput, choiceTypeField} from './question-input.js?v=7751db6e04572b2f';
-import {enhanceTopicContent} from './topic-content.js?v=7751db6e04572b2f';
-import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=7751db6e04572b2f';
-import {createCatalogPicker} from './catalog-picker.js?v=7751db6e04572b2f';
-import {createAtomicView} from './atomic.js?v=7751db6e04572b2f';
-import {createTrainingView} from './training.js?v=7751db6e04572b2f';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=7751db6e04572b2f";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=6d29867e0d7351ea";
+import { createReviewView } from "./review.js?v=6d29867e0d7351ea";
+import { renderCourseGraph } from "./course-graph.js?v=6d29867e0d7351ea";
+import {questionInput, choiceTypeField} from './question-input.js?v=6d29867e0d7351ea';
+import {enhanceTopicContent} from './topic-content.js?v=6d29867e0d7351ea';
+import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=6d29867e0d7351ea';
+import {createCatalogPicker} from './catalog-picker.js?v=6d29867e0d7351ea';
+import {createAtomicView} from './atomic.js?v=6d29867e0d7351ea';
+import {createTrainingView} from './training.js?v=6d29867e0d7351ea';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=6d29867e0d7351ea";
 
-import {createPaperView} from './review-papers.js?v=7751db6e04572b2f';
+import {createPaperView} from './review-papers.js?v=6d29867e0d7351ea';
 
-import {renderTaskTree} from './task-tree.js?v=7751db6e04572b2f';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=7751db6e04572b2f';
+import {renderTaskTree} from './task-tree.js?v=6d29867e0d7351ea';
+import {referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=6d29867e0d7351ea';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=6d29867e0d7351ea';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -667,6 +668,7 @@ export function initPortal(bridge) {
       renderTask: task => incompleteTask(task, data, view), expanded: expandedUnits,
       keyPrefix: `${bridge.getAccess()?.learner_id}:${view.review ? 'review' : view.training ? 'training' : ''}`,
       sourceOrder: view.sourceOrder || [],
+      defaultOpen: Boolean(view.review),
     });
   }
   function renderLearn(data, taskId, ticket) {
@@ -785,8 +787,9 @@ export function initPortal(bridge) {
     const result = outcomes[answer.result] || (answer.correct === true ? t("portal.correct.80") : answer.correct === false ? t("portal.incorrect.81") : "—");
     const outcome = node("span", `answerOutcome ${answer.correct === true ? "correct" : answer.correct === false ? "incorrect" : ""}`, result); meta.append(outcome);
     const explanation = node("div", "answerExplanation"); explanation.hidden = true;
-    if (answer.explanation_html) explanation.append(reportableContent(trustedContent(answer.explanation_html, references), reportContext,
-      `explanation:${answer.question_id}`, answer.content_version)); else explanation.append(node("p", "", t("portal.no.explanation.is.available.for.this.question.86")));
+    const reference = referenceAnswer(answer); if (reference) explanation.append(reference);
+    if (answer.explanation_html) explanation.append(prepareAnswerContent(reportableContent(trustedContent(answer.explanation_html, references), reportContext,
+      `explanation:${answer.question_id}`, answer.content_version))); else explanation.append(node("p", "", t("portal.no.explanation.is.available.for.this.question.86")));
     if (answer.reason) explanation.append(node('p', 'feedbackReason', answer.reason));
     if (answer.correct !== true) { explanation.append(node("h3", "", t("portal.your.answer.87")), node("pre", "historyYourAnswer", answer.answer == null || answer.answer === "" ? t("portal.unanswered.85") : answer.answer_display ?? answer.answer)); }
     const toggle = control(t("portal.show.explanation.88"), "answerExplanationToggle textButton", () => { explanation.hidden = !explanation.hidden; toggle.textContent = explanation.hidden ? t("portal.show.explanation.88") : t("portal.hide.explanation.89"); toggle.setAttribute("aria-expanded", String(!explanation.hidden)); }); toggle.setAttribute("aria-expanded", "false");
@@ -1124,6 +1127,10 @@ export function initPortal(bridge) {
       const block = node('article', 'courseChoice materialBlock'); block.dataset.contentBlock = item.id; block.tabIndex = -1;
       const label = `${item.title || data.title} · ${t('help.block.' + item.kind)}`;
       const stem = trustedContent(item.html); block.append(node('h2', '', label), stem);
+      if (item.kind === 'explanation') {
+        const reference = referenceAnswer(item); if (reference) stem.before(reference);
+        prepareAnswerContent(stem);
+      }
       if (item.interaction && item.interaction.type !== 'text') {
         const typeLabel = choiceTypeField(item.interaction); if (typeLabel) stem.before(typeLabel);
         block.append(questionInput(item.interaction, {id: `material-answer-${blocks.childElementCount}`, stem, disabled: true}).element);

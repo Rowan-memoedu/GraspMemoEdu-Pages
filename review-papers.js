@@ -1,15 +1,15 @@
-import {t, translateMessage} from './i18n.js?v=7751db6e04572b2f';
-import {answerEditor, readerFrame} from './learning-ui.js?v=7751db6e04572b2f';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=7751db6e04572b2f';
-import {createLearningCache} from './learning-cache.js?v=7751db6e04572b2f';
-import {helpableContent, reportableContent} from './content-report.js?v=7751db6e04572b2f';
+import {t, translateMessage} from './i18n.js?v=6d29867e0d7351ea';
+import {answerEditor, readerFrame} from './learning-ui.js?v=6d29867e0d7351ea';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=6d29867e0d7351ea';
+import {createLearningCache} from './learning-cache.js?v=6d29867e0d7351ea';
+import {helpableContent, reportableContent} from './content-report.js?v=6d29867e0d7351ea';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return x; };
-import {createContentTimer} from './content-timer.js?v=7751db6e04572b2f';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=7751db6e04572b2f';
-import {selfAssessment} from './self-assessment.js?v=7751db6e04572b2f';
+import {createContentTimer} from './content-timer.js?v=6d29867e0d7351ea';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=6d29867e0d7351ea';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=6d29867e0d7351ea';
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);
@@ -291,7 +291,8 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
       answer.rows = 3; answer.setAttribute('aria-label', t('你的答案')); main.append(answer);
     }
     if (item.result) {
-      main.append(node('p', item.result.correct ? 'correctResult' : 'fieldError', t(item.result.correct ? 'training.correct' : 'training.incorrect')), node('p', '', item.result.reason === '限时已到，本题未完成作答。' ? t('paper.unansweredTimeout') : item.result.reason), content(item, 'explanation', item.explanation_html));
+      const reference = referenceAnswer(item); if (reference) main.append(reference);
+      main.append(node('p', item.result.correct ? 'correctResult' : 'fieldError', t(item.result.correct ? 'training.correct' : 'training.incorrect')), node('p', '', item.result.reason === '限时已到，本题未完成作答。' ? t('paper.unansweredTimeout') : item.result.reason), prepareAnswerContent(content(item, 'explanation', item.explanation_html)));
       if (item.result.due_at) main.append(node('p', 'inputHint', t('atomic.availableAt', {time: formatDate(item.result.due_at)})));
     }
     if (state.error) { main.append(node('p', 'fieldError', translateMessage(state.error))); if (state.phase === 'grading') main.append(button(t('training.retry'), 'primaryButton', () => submit(null, true))); }
