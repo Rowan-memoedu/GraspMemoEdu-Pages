@@ -1,5 +1,5 @@
-import {t, translateMessage} from './i18n.js?v=cbf6979708c84fba';
-import {enhanceTopicContent} from './topic-content.js?v=cbf6979708c84fba';
+import {t, translateMessage} from './i18n.js?v=895d67cb8db67e93';
+import {enhanceTopicContent} from './topic-content.js?v=895d67cb8db67e93';
 
 const node = (tag, cls = '', text) => { const el = document.createElement(tag); el.className = cls; if (text !== undefined) el.textContent = text; return el; };
 export const feedbackCategories = {

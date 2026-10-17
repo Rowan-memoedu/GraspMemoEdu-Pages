@@ -1,7 +1,7 @@
-import {t, learningTitle} from './i18n.js?v=cbf6979708c84fba';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=cbf6979708c84fba';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=cbf6979708c84fba';
-import {enhanceTopicContent} from './topic-content.js?v=cbf6979708c84fba';
+import {t, learningTitle} from './i18n.js?v=895d67cb8db67e93';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=895d67cb8db67e93';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=895d67cb8db67e93';
+import {enhanceTopicContent} from './topic-content.js?v=895d67cb8db67e93';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -47,7 +47,7 @@ export function renderSourceReader(target, state, index = 0, onNavigate = () => 
   const blocks = state.blocks || [], block = blocks[index];
   target.replaceChildren();
   const notice = node('aside', 'featureNotice');
-  notice.append(node('strong', '', '可阅读 · 暂不可训练'));
+  notice.append(node('strong', '', state.availability.readable ? '可阅读 · 暂不可训练' : '已保存来源 · 原材料尚无正文'));
   const reasons = node('ul');
   for (const reason of state.availability.reasons) reasons.append(node('li', '', reason.message || reason.code));
   notice.append(reasons); target.append(notice);
