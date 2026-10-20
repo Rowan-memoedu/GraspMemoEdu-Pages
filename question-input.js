@@ -1,6 +1,6 @@
-import {t} from './i18n.js?v=e95839540a8bb6dd';
-import {prepareLiteralMath} from './math-presentation.js?v=e95839540a8bb6dd';
-import {compositeInput} from './composite-input.js?v=e95839540a8bb6dd';
+import {t} from './i18n.js?v=262b13fc445222cb';
+import {prepareLiteralMath} from './math-presentation.js?v=262b13fc445222cb';
+import {compositeInput} from './composite-input.js?v=262b13fc445222cb';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;

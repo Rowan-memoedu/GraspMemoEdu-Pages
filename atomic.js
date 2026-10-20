@@ -1,8 +1,9 @@
-import {t, translateMessage} from './i18n.js?v=e95839540a8bb6dd';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=e95839540a8bb6dd';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=e95839540a8bb6dd';
-import {reportableContent, helpableContent} from './content-report.js?v=e95839540a8bb6dd';
-import {createLearningCache} from './learning-cache.js?v=e95839540a8bb6dd';
+import {t, translateMessage} from './i18n.js?v=262b13fc445222cb';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=262b13fc445222cb';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=262b13fc445222cb';
+import {reportableContent, helpableContent} from './content-report.js?v=262b13fc445222cb';
+import {createLearningCache} from './learning-cache.js?v=262b13fc445222cb';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=262b13fc445222cb';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
@@ -26,6 +27,8 @@ export function createAtomicView(bridge) {
   const draftKey = () => `${prefix()}:draft:${state.active_step_id}`;
   const submissionKey = () => `${prefix()}:submission`;
   const savedSubmission = () => { try { return JSON.parse(read(submissionKey())); } catch { return null; } };
+  const hyperskillKey = () => `${prefix()}:hyperskill:${state.active_step_id}`;
+  const hyperskillData = () => { try { return JSON.parse(read(hyperskillKey())); } catch { return null; } };
   const call = (path, options) => bridge.request(`${path}?topic_id=${encodeURIComponent(topic)}`, options);
   const payload = () => ({request_id: crypto.randomUUID(), expected_revision: state.revision,
     attempt_id: state.attempt_id, step_id: state.active_step_id});
@@ -55,6 +58,9 @@ export function createAtomicView(bridge) {
     if (!topic || busy || document.hidden) { schedule(); return; }
     const ticket = epoch;
     try {
+      if(state.current?.hyperskill && hyperskillData()?.pending) {
+        await hyperskillAction('status'); return;
+      }
       const pending = state?.pending_submission_id || savedSubmission()?.request_id;
       const result = await call(pending ? `submissions/${encodeURIComponent(pending)}` : 'state');
       if (!active(ticket)) return;
@@ -112,6 +118,38 @@ export function createAtomicView(bridge) {
       if (active(ticket)) { busy = false; render(); notice(translateMessage(error.message)); }
     } finally { if (active(ticket)) { busy = false; schedule(); } }
   }
+  async function hyperskillAction(action,answer) {
+    if(busy)return;
+    const ticket=epoch;busy=true;failure=null;render();
+    try {
+      let data=hyperskillData(), result;
+      if(action==='open') {
+        const grant=await call('academy/launch',{method:'POST',body:payload()});
+        if(!active(ticket))return;
+        accept(grant.state);
+        result=await localHyperskill('open',{ticket:grant.ticket});
+      } else {
+        const requestId=data.request_id||crypto.randomUUID();
+        if(action==='submit') {data.request_id=requestId;write(hyperskillKey(),JSON.stringify(data));}
+        result=await localHyperskill(action,{session:data.session,attempt_id:data.attempt_id,
+          ...(action==='submit'?{answer,request_id:requestId}:{})});
+      }
+      if(!active(ticket))return;
+      write(hyperskillKey(),JSON.stringify(result));
+      if(action==='retry')write(draftKey(),null);
+      busy=false;
+      const next=await call('state');
+      if(active(ticket)){accept(next,true);bridge.progressChanged();}
+    } catch(error) {
+      if(active(ticket)){
+        if(action==='submit') {
+          const saved=hyperskillData();
+          if(saved)write(hyperskillKey(),JSON.stringify({...saved,pending:true,message:'提交状态尚未确认，请先刷新结果。'}));
+        }
+        busy=false;render();notice(error.message);
+      }
+    } finally {if(active(ticket)){busy=false;schedule();}}
+  }
   function academyQuestion(box, question, history) {
     box.classList.add('academyQuestion');
     const disabled = history || busy || Boolean(state.pause) || !state.can_submit;
@@ -150,6 +188,11 @@ export function createAtomicView(bridge) {
     const stem = marked(question.html, `question:${question.card_id}`, question.card_id);
     const typeField = choiceTypeField(question.interaction); if (typeField) box.append(typeField);
     box.append(stem);
+    if(question.hyperskill)return hyperskillQuestion(box,{question,history,
+      disabled:history||busy||Boolean(state.pause)||!state.can_submit,
+      data:history?null:hyperskillData(),draft:history?'':read(draftKey())||'',
+      onDraft:value=>write(draftKey(),value),action:hyperskillAction,
+      finish:()=>mutate('academy/finish'),next:()=>mutate('continue')});
     if (question.academy) return academyQuestion(box, question, history);
     const form = node('form', 'atomicAnswerForm'); form.id = 'atomicAnswerForm';
     const disabled = history || question.phase !== 'answer' || busy || Boolean(state.pause || state.pending_submission_id) || !state.can_submit;
