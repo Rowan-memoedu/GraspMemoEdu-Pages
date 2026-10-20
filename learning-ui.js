@@ -1,7 +1,7 @@
-import {t, learningTitle} from './i18n.js?v=0305ca00f429330d';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=0305ca00f429330d';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=0305ca00f429330d';
-import {enhanceTopicContent} from './topic-content.js?v=0305ca00f429330d';
+import {t, learningTitle} from './i18n.js?v=09f99759e2b71f7d';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=09f99759e2b71f7d';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=09f99759e2b71f7d';
+import {enhanceTopicContent} from './topic-content.js?v=09f99759e2b71f7d';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -28,6 +28,7 @@ export function readerHistorySteps(state) {
     if (!state.content_order?.length) return visited;
     const positions = new Map(state.content_order.map((section, index) => [`${section.kind}:${section.id}`, index]));
     const position = step => step.kind === 'completion' ? state.content_order.length + 1
+      : step.kind === 'atomic_card' ? (positions.get(`introduction:${step.introduction_id}`) ?? 0) + .5
       : positions.get(step.kind === 'introduction' ? `introduction:${step.introduction_id || step.module_id}`
         : `example:${step.module_id}`) ?? state.content_order.length;
     return visited.slice().sort((a, b) => position(a) - position(b));
