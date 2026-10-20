@@ -1,6 +1,6 @@
-import {mountMermaid} from './vendor/mermaid/index.js?v=80ba278a52ec527d';
-import {renderBacklinks} from './vendor/document-backlinks.mjs?v=80ba278a52ec527d';
-import {t} from './i18n.js?v=80ba278a52ec527d';
+import {mountMermaid} from './vendor/mermaid/index.js?v=4504fc54be2f366f';
+import {renderBacklinks} from './vendor/document-backlinks.mjs?v=4504fc54be2f366f';
+import {t} from './i18n.js?v=4504fc54be2f366f';
 
 export function referenceHref(target) {
   const base = `#/subjects/${encodeURIComponent(target.subject_id)}/topic/${encodeURIComponent(target.topic_id)}`;
@@ -8,6 +8,7 @@ export function referenceHref(target) {
 }
 
 export function enhanceTopicContent(root, references) {
+  enhanceSourceContent(root);
   root.classList.add('reading-outline');
   for (const callout of root.querySelectorAll('[data-callout="requirement"]')) {
     for (const paragraph of callout.querySelectorAll(':scope > p')) {
@@ -101,8 +102,11 @@ export function enhanceSourceContent(root) {
 
 export function mountTopicBacklinks(root, references) {
   root.querySelector(':scope > .topicBacklinks')?.remove();
-  if (!references) return;
-  root.classList.add('reading-outline');
+  root.classList.toggle('reading-outline', Boolean(references));
+  if (!references) {
+    delete root.dataset.documentTitleSource;
+    return;
+  }
   root.dataset.documentTitleSource = root.id;
   const sidebar = document.createElement('aside');
   sidebar.className = 'topicBacklinks sidebar right';
