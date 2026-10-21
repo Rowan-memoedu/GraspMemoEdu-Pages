@@ -1,16 +1,16 @@
-import {t, translateMessage} from './i18n.js?v=5957696006f188e4';
-import {answerReady, answerEmpty} from './question-input.js?v=5957696006f188e4';
-import {createLearningCache} from './learning-cache.js?v=5957696006f188e4';
-import {helpableContent} from './content-report.js?v=5957696006f188e4';
-import {ratingChoices} from './self-assessment.js?v=5957696006f188e4';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=5957696006f188e4';
+import {t, translateMessage} from './i18n.js?v=5b029a38e9b602c2';
+import {answerReady, answerEmpty} from './question-input.js?v=5b029a38e9b602c2';
+import {createLearningCache} from './learning-cache.js?v=5b029a38e9b602c2';
+import {helpableContent} from './content-report.js?v=5b029a38e9b602c2';
+import {ratingChoices} from './self-assessment.js?v=5b029a38e9b602c2';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=5b029a38e9b602c2';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=5957696006f188e4';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=5b029a38e9b602c2';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -64,6 +64,7 @@ export function createTrainingView(bridge) {
       if (e === epoch && next.phase === 'done' && prior && prior.phase !== 'done') {
         const q = group?.questions.find(q => q.id === next.question_id && q.latest_attempt_id === next.attempt_id);
         if (q) {
+          q.completed = true;
           if (q.completed_count !== null) q.completed_count = (q.completed_count || 0) + 1;
           q.latest_attempt_phase = 'done';
           renderSidebar();
@@ -109,8 +110,10 @@ export function createTrainingView(bridge) {
     if (parts.length === 1) {
       const data = await request('training/catalog'); if (e !== epoch) return;
       const grid = node('div', 'courseGrid'); root.replaceChildren(node('h1', 'portalPageTitle', t('training.banks')), grid);
+      grid.before(bridge.taskVisibilityOptions(root));
       for (const bank of data.banks) {
         const card = node('article', 'courseChoice');
+        card.dataset.dependencyReady = String(bank.dependency_ready !== false);
         card.append(node('h2', '', bank.title), node('p', 'courseDescription', bank.description),
           link(t('training.train'), `/banks/${encode(bank.id)}`, 'primaryButton courseLearn'));
         grid.append(card);
@@ -121,22 +124,31 @@ export function createTrainingView(bridge) {
       const count = bank.groups.reduce((n, g) => n + g.question_count, 0);
       const completed = bank.groups.reduce((n, g) => n + (g.completed_count || 0), 0);
       const containers = bank.groups.filter(g => bank.groups.some(child => child.parent_id === g.id));
-      const data = {course: {id: bank.id, title: bank.title, progress: count ? completed / count * 100 : 0},
-        tasks: bank.groups.filter(g => g.question_count || g.introduction_count).map(g => ({id: g.id, topic_id: g.id, type: 'Lesson',
+      const groupTasks = bank.groups.filter(g => g.question_count || g.introduction_count).map(g => ({id: g.id, topic_id: g.id, type: 'Lesson',
           title: g.title, topic_kind: g.question_count ? 'lesson' : 'introduction',
-          question_count: g.question_count, progress: g.progress ?? (g.question_count ? g.completed_count / g.question_count * 100 : 0)})),
+          status: g.completed ? 'completed' : g.completed_count ? 'in_progress' : 'not_started', completed_at: g.completed_at,
+          result: g.completed ? 'completed' : null,
+          dependency_ready: g.dependency_ready, prerequisites: g.prerequisites, prerequisite_details: g.prerequisite_details,
+          question_count: g.question_count, progress: g.progress ?? (g.question_count ? g.completed_count / g.question_count * 100 : 0)}));
+      const data = {course: {id: bank.id, title: bank.title, progress: count ? completed / count * 100 : 0},
+        tasks: groupTasks.filter(g => g.status !== 'completed'),
+        history: groupTasks.filter(g => g.status === 'completed').sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || '')),
         pending_hierarchy: containers.map(g => ({...g, topic_ids: bank.groups.filter(child => (child.question_count || child.introduction_count)
           && (child.id === g.id || child.parent_id === g.id && !containers.some(c => c.id === child.id))).map(child => child.id)}))};
       const layout = node('div', 'dashboardLayout'), tasks = node('div', 'dashboardTasks');
       const pending = node('section', 'incompleteTasks'); pending.setAttribute('aria-label', t('training.groups'));
-      tasks.append(pending);
+      tasks.append(bridge.taskVisibilityOptions(tasks, {extra: [button(t('portal.view.knowledge.map.91'), 'textButton', () => bridge.openGraph(data))]}));
+      const historyList = node('section', 'completedTasks'); historyList.setAttribute('aria-label', t('portal.completed.tasks.68'));
+      tasks.append(pending, historyList);
       layout.append(bridge.courseSidebar(data, {training: true, href: `/banks/${encode(bank.id)}`, questionCount: count,
         onProgress: () => pending.scrollIntoView({block: 'start'})}), tasks);
       root.replaceChildren(layout);
-      bridge.taskTree(pending, data, {training: true, label: t('training.groups'), startLabel: t('training.start'),
+      const view = {training: true, label: t('training.groups'), startLabel: t('training.start'),
         sourceOrder: bank.groups.map(g => g.id),
-        target: task => groupPath(bank.id, task.id)});
-      if (!data.tasks.length) pending.append(node('p', 'portalEmpty', t('training.empty')));
+        target: task => groupPath(bank.id, task.id)};
+      bridge.taskTree(pending, data, view);
+      bridge.renderHistory(data, historyList, view);
+      if (!data.tasks.length) pending.append(node('p', 'portalEmpty', t(data.history.length ? 'portal.all.current.tasks.in.this.course.are.complete.65' : 'training.empty')));
     } else if (parts.length === 3) {
       const nextGroup = await request('training/group?' + query({bank_id: parts[1], group_id: parts[2], reader: 1}));
       if (e !== epoch) return;
@@ -189,8 +201,8 @@ export function createTrainingView(bridge) {
     group.questions.forEach((q, index) => {
       const {group: section, items} = readerHistoryGroup({contentId: q.id,
         title: t('training.exercise', {number: index + 1}),
-        status: q.completed_count ? t('training.completed', {count: q.completed_count}) : t('training.unanswered'),
-        className: q.completed_count ? 'completed' : '', items: [{label: q.title, className: 'trainingQuestionLink',
+        status: q.completed ? q.completed_count ? t('training.completed', {count: q.completed_count}) : t('portal.completed.6') : t('training.unanswered'),
+        className: q.completed ? 'completed' : '', items: [{label: q.title, className: 'trainingQuestionLink',
           onSelect: () => select(q.id), dataset: {questionId: q.id},
           selected: current?.question_id === q.id && (current.preview || current.attempt_id === q.latest_attempt_id)}]});
       sidebar.append(section);
@@ -208,11 +220,11 @@ export function createTrainingView(bridge) {
       const section = [...sidebar.children].find(n => n.dataset.contentId === item.id);
       if (section) sidebar.append(section);
     }
-    const completed = group.questions.filter(q => q.completed_count).length;
+    const completed = group.questions.filter(q => q.completed).length;
     readerProgress(reader.refs, {label: t('reader.modulesCompleted', {completed, total: group.questions.length}),
       status: t(completed === group.questions.length ? 'training.finished' : 'training.inProgress'),
       hidden: group.questions.length === 0, percent: Math.round(100 * completed / (group.questions.length || 1)),
-      segments: group.questions.map(q => ({title: q.title, status: q.completed_count ? 'completed' : q.latest_attempt_id ? 'in_progress' : 'not_started'}))});
+      segments: group.questions.map(q => ({title: q.title, status: q.completed ? 'completed' : q.latest_attempt_id ? 'in_progress' : 'not_started'}))});
   }
   function navigationFor(id, primary, extra = []) {
     const pages = (group.content_order || group.questions.map(q => ({type: 'question', id: q.id}))).map(item => {
@@ -221,6 +233,13 @@ export function createTrainingView(bridge) {
       return {...value, kind: item.type};
     });
     const index = pages.findIndex(item => item.id === id);
+    if (!reviewCard && !primary && group.questions.length && group.questions.every(q => q.completed)
+        && (!current || current.phase === 'done')) {
+      primary = button(t('training.finishLearning'), 'primaryButton trainingFinish', () => {
+        bridge.progressChanged();
+        bridge.completeGroup(group.bank_id, group.id);
+      });
+    }
     readerNavigation(main, {previous: index > 0 ? pages[index - 1] : null, next: index >= 0 ? pages[index + 1] : null,
       idPrefix: 'training', primary, nextAsPrimary: pages[index]?.kind === 'introduction', extra,
       onSelect: page => page.kind === 'introduction' ? selectIntroduction(page.id) : select(page.id)});
