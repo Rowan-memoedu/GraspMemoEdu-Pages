@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=51490b3e06872afe';
-import {answerReady, answerEmpty} from './question-input.js?v=51490b3e06872afe';
-import {createLearningCache} from './learning-cache.js?v=51490b3e06872afe';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=51490b3e06872afe';
-import {helpableContent} from './content-report.js?v=51490b3e06872afe';
-import {ratingChoices} from './self-assessment.js?v=51490b3e06872afe';
-import {pointAssessment} from './point-assessment.js?v=51490b3e06872afe';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=51490b3e06872afe';
+import {t, translateMessage} from './i18n.js?v=2a862948b4ef2706';
+import {answerReady, answerEmpty} from './question-input.js?v=2a862948b4ef2706';
+import {createLearningCache} from './learning-cache.js?v=2a862948b4ef2706';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=2a862948b4ef2706';
+import {helpableContent} from './content-report.js?v=2a862948b4ef2706';
+import {ratingChoices} from './self-assessment.js?v=2a862948b4ef2706';
+import {pointAssessment} from './point-assessment.js?v=2a862948b4ef2706';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=2a862948b4ef2706';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=51490b3e06872afe';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=2a862948b4ef2706';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -144,7 +144,7 @@ export function createTrainingView(bridge) {
         && bank.groups.some(child => child.parent_id === g.id));
       const groupTasks = bank.groups.filter(g => g.question_count || g.introduction_count).map(g => ({id: g.id, topic_id: g.id, type: 'Lesson',
           title: g.title, topic_kind: g.question_count ? 'lesson' : 'introduction',
-          status: g.completed ? 'completed' : g.completed_count ? 'in_progress' : 'not_started', completed_at: g.completed_at,
+          status: g.completed ? 'completed' : g.completed_count || g.oj_status?.submitted_count ? 'in_progress' : 'not_started', completed_at: g.completed_at,
           result: g.completed ? 'completed' : null,
           dependency_ready: g.dependency_ready, prerequisites: g.prerequisites, prerequisite_details: g.prerequisite_details,
           point_prerequisites: g.point_prerequisites,
@@ -248,7 +248,7 @@ export function createTrainingView(bridge) {
     group.questions.forEach((q, index) => {
       const {group: section, items} = readerHistoryGroup({contentId: q.id,
         title: t('training.exercise', {number: index + 1}),
-        status: q.completed ? q.completed_count ? t('training.completed', {count: q.completed_count}) : t('portal.completed.6') : t('training.unanswered'),
+        status: q.oj_status?.accepted ? t('training.ojAccepted') : q.oj_status?.submitted ? t('training.ojSubmitted') : q.completed ? q.completed_count ? t('training.completed', {count: q.completed_count}) : t('portal.completed.6') : t('training.unanswered'),
         className: q.completed ? 'completed' : '', items: [{label: q.title, className: 'trainingQuestionLink',
           onSelect: () => select(q.id), dataset: {questionId: q.id},
           selected: current?.question_id === q.id && (current.preview || current.attempt_id === q.latest_attempt_id)}]});
