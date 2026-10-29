@@ -1,4 +1,4 @@
-@import url('./vendor/book-font/font.css?v=54928771a586fd1b');
+@import url('./vendor/book-font/font.css?v=6aa52b7dd0399c4f');
 .courseContent.reading-outline { --article-font-size: 18px; --article-line-height: 1.75; }
 .courseContent [id^="node-"] { scroll-margin-block: 6rem; }
 .courseContent [id^="node-"]:focus { outline: 2px solid var(--accent, #806449); outline-offset: 4px; }
@@ -120,6 +120,14 @@
   text-indent: 0; letter-spacing: normal; padding-block: .2em;
 }
 .courseContent.sourceBook .mathInline { letter-spacing: normal; text-indent: 0; }
+.readingSectionHeading { width: 100%; max-width: 722px; margin: .3em auto 1.2em; font-family: var(--book-font-family, "Noto Serif SC", "Source Han Serif SC", serif); line-height: 1.6; text-wrap: pretty; }
+.readingSectionHeading[data-level="1"] { font-size: 1.35rem; }
+.readingSectionHeading[data-level="2"] { font-size: 1.2rem; }
+.readingFootnotes { width: 100%; max-width: 722px; margin: 2em auto .5em; padding-top: .85em; border-top: 1px solid var(--border, #d8d5cd); }
+.readingFootnotes .courseContent { font-size: .9rem; line-height: 1.85; }
+.readingFootnotes .courseContent [data-source-role="footnote"] { font-size: inherit; line-height: inherit; }
+.readingExample { margin-block: 1.2em; }
+.topicBankQuestion, .embeddedBankQuestion { width: 100%; min-width: 0; }
 .courseContent.sourceBook .sourceFigure { margin-block: 1.6em; }
 .courseContent.sourceBook .sourceFigure :is(p,figcaption) { text-align: center; text-align-last: center; text-indent: 0; }
 .courseContent.sourceBook .sourceFigure img { max-height: 70vh; width: auto; object-fit: contain; }

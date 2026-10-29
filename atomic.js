@@ -1,14 +1,14 @@
-import {t, translateMessage} from './i18n.js?v=54928771a586fd1b';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=54928771a586fd1b';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=54928771a586fd1b';
-import {reportableContent} from './content-report.js?v=54928771a586fd1b';
-import {createLearningCache} from './learning-cache.js?v=54928771a586fd1b';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=54928771a586fd1b';
-import {enhanceSourceContent} from './topic-content.js?v=54928771a586fd1b';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=54928771a586fd1b';
-import {topicProgress, topicHistory} from './learning-ui.js?v=54928771a586fd1b';
-import {pointAssessment} from './point-assessment.js?v=54928771a586fd1b';
-import {trainingAudio} from './training-audio.js?v=54928771a586fd1b';
+import {t, translateMessage} from './i18n.js?v=6aa52b7dd0399c4f';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=6aa52b7dd0399c4f';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=6aa52b7dd0399c4f';
+import {reportableContent} from './content-report.js?v=6aa52b7dd0399c4f';
+import {createLearningCache} from './learning-cache.js?v=6aa52b7dd0399c4f';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=6aa52b7dd0399c4f';
+import {enhanceSourceContent} from './topic-content.js?v=6aa52b7dd0399c4f';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=6aa52b7dd0399c4f';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=6aa52b7dd0399c4f';
+import {pointAssessment} from './point-assessment.js?v=6aa52b7dd0399c4f';
+import {trainingAudio} from './training-audio.js?v=6aa52b7dd0399c4f';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
@@ -126,7 +126,10 @@ export function createAtomicView(bridge) {
   }
   function introductionContent(intro, report = true) {
     const attributions = sourceAttributions(intro.source_attributions);
-    return [report ? marked(intro.html, 'introduction') : content(intro.html), ...(attributions ? [attributions] : [])];
+    const extra = node('div'), heading = readingSectionHeading(intro.section);
+    readingFields(extra, intro);
+    return [...(heading ? [heading] : []), report ? marked(intro.html, 'introduction') : content(intro.html),
+      ...extra.children, ...(attributions ? [attributions] : [])];
   }
   async function launchAcademy() {
     if (busy) return;

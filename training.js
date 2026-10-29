@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=54928771a586fd1b';
-import {answerReady, answerEmpty} from './question-input.js?v=54928771a586fd1b';
-import {createLearningCache} from './learning-cache.js?v=54928771a586fd1b';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=54928771a586fd1b';
-import {helpableContent} from './content-report.js?v=54928771a586fd1b';
-import {ratingChoices} from './self-assessment.js?v=54928771a586fd1b';
-import {pointAssessment} from './point-assessment.js?v=54928771a586fd1b';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=54928771a586fd1b';
+import {t, translateMessage} from './i18n.js?v=6aa52b7dd0399c4f';
+import {answerReady, answerEmpty} from './question-input.js?v=6aa52b7dd0399c4f';
+import {createLearningCache} from './learning-cache.js?v=6aa52b7dd0399c4f';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=6aa52b7dd0399c4f';
+import {helpableContent} from './content-report.js?v=6aa52b7dd0399c4f';
+import {ratingChoices} from './self-assessment.js?v=6aa52b7dd0399c4f';
+import {pointAssessment} from './point-assessment.js?v=6aa52b7dd0399c4f';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=6aa52b7dd0399c4f';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=54928771a586fd1b';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=6aa52b7dd0399c4f';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -22,6 +22,8 @@ export function createTrainingView(bridge) {
   let epoch = 0, selection = 0, timer = null, group = null, current = null, sidebar, main;
   let elapsed = 0, activeSince = null, clockKey = null, visibilityHandler = null;
   let reader = null;
+  let embedded = null;
+  let mathStyle = null;
   let selectedRoot = null;
   const expandedCatalog = new Map();
   let reviewCard = false, reviewQuestion = null;
@@ -104,7 +106,7 @@ export function createTrainingView(bridge) {
     hyperskillAvailability = hyperskillProbe = hyperskillRecovery = null; hyperskillWarm.clear();
     reader?.destroy(); reader = null;
     reviewCard = false; reviewQuestion = null;
-    document.getElementById('trainingMathStyle')?.remove();
+    mathStyle?.remove(); mathStyle = null; embedded = null;
   }
   function error(container, failure, retry) {
     container.querySelector('.trainingError')?.remove();
@@ -199,7 +201,7 @@ export function createTrainingView(bridge) {
         onlineHandler = () => resumeHyperskill(e);
         window.addEventListener('online', onlineHandler);
       }
-      const style = node('style'); style.id = 'trainingMathStyle'; style.textContent = group.math_css; document.head.append(style);
+      mathStyle = node('style'); mathStyle.id = 'trainingMathStyle'; mathStyle.textContent = group.math_css; document.head.append(mathStyle);
       reader = readerFrame(readerTemplate, 'training');
       const refs = reader.refs;
       sidebar = refs.historyPanel; main = refs.stepCard;
@@ -230,6 +232,7 @@ export function createTrainingView(bridge) {
     } else throw new Error(t('portal.this.page.does.not.exist.24'));
   }
   function cardGroup(source) {
+    if (embedded && source.version !== embedded.reference.version) throw new Error('题库内容版本已更新，请重新加载 Topic。');
     if (!reviewCard) return source;
     const selected = source.questions.find(question => question.id === reviewQuestion);
     if (!selected) throw new Error(t('portal.this.page.does.not.exist.24'));
@@ -237,6 +240,7 @@ export function createTrainingView(bridge) {
       content_order: [{type: 'question', id: selected.id}]};
   }
   function renderSidebar() {
+    if (embedded) return;
     if (reviewCard) {
       const question = group.questions[0];
       renderReviewReader(reader.refs, {items: [{...question, completed: current?.phase === 'done',
@@ -274,6 +278,10 @@ export function createTrainingView(bridge) {
       segments: group.questions.map(q => ({title: q.title, status: q.completed ? 'completed' : q.latest_attempt_id ? 'in_progress' : 'not_started'}))});
   }
   function navigationFor(id, primary, extra = []) {
+    if (embedded) {
+      readerNavigation(main, {primary, extra, idPrefix: 'training'});
+      return;
+    }
     const pages = (group.content_order || group.questions.map(q => ({type: 'question', id: q.id}))).map(item => {
       const value = item.type === 'introduction' ? group.introductions.find(i => i.id === item.id)
         : group.questions.find(q => q.id === item.id);
@@ -322,7 +330,7 @@ export function createTrainingView(bridge) {
       }
       if (!alive(e, s)) return;
       if (state.bank_id !== group.bank_id || state.group_id !== group.id || state.question_id !== questionId) throw new Error(t('portal.this.page.does.not.exist.24'));
-      history.replaceState(null, '', href(groupPath(group.bank_id, group.id, questionId)
+      if (!embedded) history.replaceState(null, '', href(groupPath(group.bank_id, group.id, questionId)
         + (reviewCard ? '&card=1&attempt=' + encode(state.attempt_id) : '')));
       current = remember(state); startClock(state); renderSidebar(); renderQuestion();
       if(state.hyperskill && !state.preview && state.phase==='answer' && state.can_submit) void warmHyperskill(state,e);
@@ -717,6 +725,7 @@ export function createTrainingView(bridge) {
     if (!alive(e, s)) return;
     group = {...group, ...cardGroup(updated)};
     histories.clear(); renderSidebar();
+    if (embedded) embedded.onChange();
   }
   async function poll(e, s, state) {
     try {
@@ -755,6 +764,7 @@ export function createTrainingView(bridge) {
         const versionChanged = group.version !== next.version;
         if (versionChanged) { attempts.clear(); histories.clear(); }
         group = cardGroup(next);
+        if (embedded && sidebarChanged) embedded.onChange();
         for (const value of Object.values(next.reader_states || {})) remember(value);
         for (const [id, value] of Object.entries(next.reader_histories || {})) histories.set(id + ':0', value);
         if (versionChanged) {
@@ -799,5 +809,33 @@ export function createTrainingView(bridge) {
     if (data.next_due_at) section.append(node('p', '', t('training.nextDue', {time: formatDate(data.next_due_at)})));
     return section;
   }
-  return {open, stop, renderReviews};
+  async function mount(reference, host, onChange = () => {}) {
+    stop(); cacheAccess = getAccess();
+    embedded = {reference, onChange}; reviewCard = true; reviewQuestion = reference.question_id;
+    const e = epoch;
+    host.replaceChildren(node('p', '', t('training.loading')));
+    try {
+      const next = await request('training/group?' + query({bank_id: reference.bank_id, group_id: reference.group_id, reader: 1}), {fresh: true});
+      if (e !== epoch) return;
+      group = cardGroup(next);
+      for (const value of Object.values(next.reader_states || {})) remember(value);
+      main = node('section', 'embeddedBankQuestion');
+      const saveStatus = node('p', 'inputHint');
+      host.replaceChildren(main, saveStatus);
+      reader = {refs: {footerPosition: node('span'), saveStatus}, closeOnMobile() {}, destroy() {host.replaceChildren();}};
+      mathStyle = node('style'); mathStyle.textContent = group.math_css; document.head.append(mathStyle);
+      visibilityHandler = () => {
+        flushClock();
+        if (!document.hidden && current?.phase === 'answer' && !current.submission_id) activeSince = performance.now();
+        if (group.external_providers?.includes('hyperskill')) resumeHyperskill(e);
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+      if (group.external_providers?.includes('hyperskill')) {
+        void refreshHyperskill(e); onlineHandler = () => resumeHyperskill(e); window.addEventListener('online', onlineHandler);
+      }
+      await select(reference.question_id);
+      if (e === epoch) scheduleValidation();
+    } catch (failure) { if (e === epoch) error(host, failure, () => mount(reference, host, onChange)); }
+  }
+  return {open, mount, stop, renderReviews};
 }

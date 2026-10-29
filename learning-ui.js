@@ -1,8 +1,8 @@
-import {t, learningTitle} from './i18n.js?v=54928771a586fd1b';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=54928771a586fd1b';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=54928771a586fd1b';
-import {enhanceTopicContent} from './topic-content.js?v=54928771a586fd1b';
-import {sourceAttributions} from './memory-chunk.js?v=54928771a586fd1b';
+import {t, learningTitle} from './i18n.js?v=6aa52b7dd0399c4f';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=6aa52b7dd0399c4f';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=6aa52b7dd0399c4f';
+import {enhanceTopicContent} from './topic-content.js?v=6aa52b7dd0399c4f';
+import {sourceAttributions} from './memory-chunk.js?v=6aa52b7dd0399c4f';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -31,6 +31,7 @@ export function readerHistorySteps(state) {
     const position = step => step.kind === 'completion' ? state.content_order.length + 1
       : step.kind === 'atomic_card' ? (positions.get(`introduction:${step.introduction_id}`) ?? 0) + .5
       : positions.get(step.kind === 'introduction' ? `introduction:${step.introduction_id || step.module_id}`
+        : step.kind === 'bank_question' ? `bank_question:${step.module_id}`
         : `example:${step.module_id}`) ?? state.content_order.length;
     return visited.slice().sort((a, b) => position(a) - position(b));
   }
@@ -43,6 +44,31 @@ export function readerHistorySteps(state) {
 export function readerContent(html, references) {
   const body = node('div', 'courseContent'); body.innerHTML = html || '';
   enhanceTopicContent(body, references); return body;
+}
+
+export function readingFields(target, step, {references, decorate = body => body} = {}) {
+  if (step.example) {
+    const example = decorate(readerContent(step.example, references), 'example');
+    example.classList.add('readingExample'); example.dataset.field = 'example';
+    target.append(example);
+  }
+  if (step.footnotes?.length) {
+    const notes = node('aside', 'readingFootnotes'); notes.dataset.field = 'footnotes';
+    notes.setAttribute('role', 'doc-endnotes'); notes.setAttribute('aria-label', '脚注');
+    for (const note of step.footnotes) {
+      const body = decorate(readerContent(note.html, references), 'footnotes');
+      body.dataset.footnoteId = note.id; notes.append(body);
+    }
+    target.append(notes);
+  }
+}
+
+export function readingSectionHeading(section) {
+  if (!section?.title) return null;
+  const heading = node('h' + Math.min(6, section.level + 1), 'readingSectionHeading', section.title);
+  if (section.title_html) heading.innerHTML = section.title_html;
+  heading.dataset.sectionId = section.id; heading.dataset.level = String(section.level);
+  return heading;
 }
 
 export function renderSourceReader(target, state, index = 0, onNavigate = () => {}) {
@@ -86,6 +112,8 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   if (counter) heading.append(node('span', 'stepCounter', counter));
   const stem = decorate(readerContent(step.html, references), 'question');
   target.setAttribute('aria-labelledby', titleId); target.replaceChildren(heading, stem);
+  const sectionHeading = readingSectionHeading(step.section); if (sectionHeading) target.prepend(sectionHeading);
+  readingFields(target, step, {references, decorate});
   const attributions = sourceAttributions(step.source_attributions); if (attributions) target.append(attributions);
   const typeField = choiceTypeField(step.interaction); if (typeField) heading.after(typeField);
   if (notice) heading.after(node('p', 'introductionUpdateNotice', notice));

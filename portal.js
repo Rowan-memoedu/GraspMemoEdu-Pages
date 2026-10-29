@@ -1,23 +1,24 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=54928771a586fd1b";
-import { createReviewView } from "./review.js?v=54928771a586fd1b";
-import { renderCourseGraph } from "./course-graph.js?v=54928771a586fd1b";
-import {questionInput, choiceTypeField} from './question-input.js?v=54928771a586fd1b';
-import {enhanceTopicContent} from './topic-content.js?v=54928771a586fd1b';
-import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=54928771a586fd1b';
-import {createCatalogPicker} from './catalog-picker.js?v=54928771a586fd1b';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout} from './catalog-workspace.js?v=54928771a586fd1b';
-import {createAtomicView} from './atomic.js?v=54928771a586fd1b';
-import {sourceAttributions} from './memory-chunk.js?v=54928771a586fd1b';
-import {createTrainingView} from './training.js?v=54928771a586fd1b';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=54928771a586fd1b";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=6aa52b7dd0399c4f";
+import { createReviewView } from "./review.js?v=6aa52b7dd0399c4f";
+import { renderCourseGraph } from "./course-graph.js?v=6aa52b7dd0399c4f";
+import {questionInput, choiceTypeField} from './question-input.js?v=6aa52b7dd0399c4f';
+import {readingFields, readingSectionHeading} from './learning-ui.js?v=6aa52b7dd0399c4f';
+import {enhanceTopicContent} from './topic-content.js?v=6aa52b7dd0399c4f';
+import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=6aa52b7dd0399c4f';
+import {createCatalogPicker} from './catalog-picker.js?v=6aa52b7dd0399c4f';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout} from './catalog-workspace.js?v=6aa52b7dd0399c4f';
+import {createAtomicView} from './atomic.js?v=6aa52b7dd0399c4f';
+import {sourceAttributions} from './memory-chunk.js?v=6aa52b7dd0399c4f';
+import {createTrainingView} from './training.js?v=6aa52b7dd0399c4f';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=6aa52b7dd0399c4f";
 
-import {createPaperView} from './review-papers.js?v=54928771a586fd1b';
-import {createContextLibraryView} from './context-library.js?v=54928771a586fd1b';
+import {createPaperView} from './review-papers.js?v=6aa52b7dd0399c4f';
+import {createContextLibraryView} from './context-library.js?v=6aa52b7dd0399c4f';
 
-import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=54928771a586fd1b';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=54928771a586fd1b';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=54928771a586fd1b';
-import {createStudentDashboard} from './student-dashboard.js?v=54928771a586fd1b';
+import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=6aa52b7dd0399c4f';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=6aa52b7dd0399c4f';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=6aa52b7dd0399c4f';
+import {createStudentDashboard} from './student-dashboard.js?v=6aa52b7dd0399c4f';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -37,7 +38,7 @@ const roundButton = (text, action) => control(text, "portalStart", action);
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=54928771a586fd1b').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=6aa52b7dd0399c4f').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }
@@ -1464,6 +1465,8 @@ export function initPortal(bridge) {
       const block = node('article', 'courseChoice materialBlock'); block.dataset.contentBlock = item.id; block.tabIndex = -1;
       const label = `${item.title || data.title} · ${t('help.block.' + item.kind)}`;
       const stem = trustedContent(item.html); block.append(node('h2', '', label), stem);
+      const heading = readingSectionHeading(item.section); if (heading) block.prepend(heading);
+      readingFields(block, item);
       const attributions = sourceAttributions(item.source_attributions); if (attributions) block.append(attributions);
       if (item.kind === 'explanation') {
         const reference = referenceAnswer(item); if (reference) stem.before(reference);
