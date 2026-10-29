@@ -1,6 +1,6 @@
-import {mountMermaid} from './vendor/mermaid/index.js?v=2f53153141c16aa0';
-import {renderBacklinks} from './vendor/document-backlinks.mjs?v=2f53153141c16aa0';
-import {t} from './i18n.js?v=2f53153141c16aa0';
+import {mountMermaid} from './vendor/mermaid/index.js?v=25f28c29c325b446';
+import {renderBacklinks} from './vendor/document-backlinks.mjs?v=25f28c29c325b446';
+import {t} from './i18n.js?v=25f28c29c325b446';
 
 export function referenceHref(target) {
   const base = `#/subjects/${encodeURIComponent(target.subject_id)}/topic/${encodeURIComponent(target.topic_id)}`;
@@ -42,6 +42,8 @@ export function enhanceSourceContent(root) {
   if (root.dataset.sourceEnhanced) return;
   root.dataset.sourceEnhanced = 'true';
   root.classList.add('sourceReading');
+  const book = Boolean(root.querySelector('[data-body-layout="prose"]'));
+  root.classList.toggle('sourceBook', book);
   // Block images and their adjacent original captions share one alignment.
   // Inline illustrations stay in their original sentence.
   for (const paragraph of root.querySelectorAll('p')) {
@@ -59,6 +61,25 @@ export function enhanceSourceContent(root) {
       caption.append(next);
     }
     if (caption.childNodes.length) figure.append(caption);
+  }
+  if (book) {
+    // PDF geometry, not caption guesses, decides which original figures share a row.
+    const owners = [...root.querySelectorAll('[data-figure-group]')].map(node => ({
+      node: node.closest('.outlineNode') || node, key: node.dataset.figureGroup,
+    }));
+    for (let index = 0; index < owners.length;) {
+      const first = owners[index++], group = [first.node];
+      while (index < owners.length && owners[index].key === first.key
+          && group.at(-1).nextElementSibling === owners[index].node) group.push(owners[index++].node);
+      if (group.length < 2) continue;
+      const row = document.createElement('div'); row.className = 'sourceFigureRow';
+      row.style.setProperty('--source-figure-count', String(group.length));
+      group[0].before(row);
+      for (const item of group) row.append(item);
+      for (const caption of group.at(-1).querySelectorAll('figcaption p')) {
+        if (/^(?:图|表|Figure|Fig\.)\s*[A-Z\d]/u.test(caption.textContent.trim())) caption.classList.add('sourceGroupCaption');
+      }
+    }
   }
   if (!root.querySelector('[id^="node-"]')) {
     const containers = [root, ...root.querySelectorAll('div,section,article')].reverse();
