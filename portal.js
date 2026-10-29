@@ -1,23 +1,23 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=25f28c29c325b446";
-import { createReviewView } from "./review.js?v=25f28c29c325b446";
-import { renderCourseGraph } from "./course-graph.js?v=25f28c29c325b446";
-import {questionInput, choiceTypeField} from './question-input.js?v=25f28c29c325b446';
-import {enhanceTopicContent} from './topic-content.js?v=25f28c29c325b446';
-import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=25f28c29c325b446';
-import {createCatalogPicker} from './catalog-picker.js?v=25f28c29c325b446';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout} from './catalog-workspace.js?v=25f28c29c325b446';
-import {createAtomicView} from './atomic.js?v=25f28c29c325b446';
-import {sourceAttributions} from './memory-chunk.js?v=25f28c29c325b446';
-import {createTrainingView} from './training.js?v=25f28c29c325b446';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=25f28c29c325b446";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=54928771a586fd1b";
+import { createReviewView } from "./review.js?v=54928771a586fd1b";
+import { renderCourseGraph } from "./course-graph.js?v=54928771a586fd1b";
+import {questionInput, choiceTypeField} from './question-input.js?v=54928771a586fd1b';
+import {enhanceTopicContent} from './topic-content.js?v=54928771a586fd1b';
+import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=54928771a586fd1b';
+import {createCatalogPicker} from './catalog-picker.js?v=54928771a586fd1b';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout} from './catalog-workspace.js?v=54928771a586fd1b';
+import {createAtomicView} from './atomic.js?v=54928771a586fd1b';
+import {sourceAttributions} from './memory-chunk.js?v=54928771a586fd1b';
+import {createTrainingView} from './training.js?v=54928771a586fd1b';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=54928771a586fd1b";
 
-import {createPaperView} from './review-papers.js?v=25f28c29c325b446';
-import {createContextLibraryView} from './context-library.js?v=25f28c29c325b446';
+import {createPaperView} from './review-papers.js?v=54928771a586fd1b';
+import {createContextLibraryView} from './context-library.js?v=54928771a586fd1b';
 
-import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=25f28c29c325b446';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=25f28c29c325b446';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=25f28c29c325b446';
-import {createStudentDashboard} from './student-dashboard.js?v=25f28c29c325b446';
+import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=54928771a586fd1b';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=54928771a586fd1b';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=54928771a586fd1b';
+import {createStudentDashboard} from './student-dashboard.js?v=54928771a586fd1b';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -37,7 +37,7 @@ const roundButton = (text, action) => control(text, "portalStart", action);
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=25f28c29c325b446').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=54928771a586fd1b').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }

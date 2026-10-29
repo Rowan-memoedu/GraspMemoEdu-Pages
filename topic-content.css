@@ -1,4 +1,4 @@
-@import url('./vendor/book-font/font.css?v=25f28c29c325b446');
+@import url('./vendor/book-font/font.css?v=54928771a586fd1b');
 .courseContent.reading-outline { --article-font-size: 18px; --article-line-height: 1.75; }
 .courseContent [id^="node-"] { scroll-margin-block: 6rem; }
 .courseContent [id^="node-"]:focus { outline: 2px solid var(--accent, #806449); outline-offset: 4px; }
@@ -94,7 +94,7 @@
   --book-heading: var(--book-serif);
   --book-figure-gap: 1.5rem;
   font-family: var(--book-serif); font-size: 19px; font-weight: 400;
-  line-height: 1.9; max-width: 38em; margin-inline: auto;
+  line-height: 1.9; width: 100%; max-width: 38em; margin-inline: auto;
   letter-spacing: .015em; word-break: normal; line-break: strict;
   overflow-wrap: break-word; font-kerning: normal;
 }
