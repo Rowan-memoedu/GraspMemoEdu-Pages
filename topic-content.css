@@ -1,4 +1,4 @@
-@import url('./vendor/book-font/font.css?v=6aa52b7dd0399c4f');
+@import url('./vendor/book-font/font.css?v=c8fd5841ea600866');
 .courseContent.reading-outline { --article-font-size: 18px; --article-line-height: 1.75; }
 .courseContent [id^="node-"] { scroll-margin-block: 6rem; }
 .courseContent [id^="node-"]:focus { outline: 2px solid var(--accent, #806449); outline-offset: 4px; }

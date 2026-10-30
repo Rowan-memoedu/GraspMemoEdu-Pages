@@ -1,24 +1,24 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=6aa52b7dd0399c4f";
-import { createReviewView } from "./review.js?v=6aa52b7dd0399c4f";
-import { renderCourseGraph } from "./course-graph.js?v=6aa52b7dd0399c4f";
-import {questionInput, choiceTypeField} from './question-input.js?v=6aa52b7dd0399c4f';
-import {readingFields, readingSectionHeading} from './learning-ui.js?v=6aa52b7dd0399c4f';
-import {enhanceTopicContent} from './topic-content.js?v=6aa52b7dd0399c4f';
-import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=6aa52b7dd0399c4f';
-import {createCatalogPicker} from './catalog-picker.js?v=6aa52b7dd0399c4f';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout} from './catalog-workspace.js?v=6aa52b7dd0399c4f';
-import {createAtomicView} from './atomic.js?v=6aa52b7dd0399c4f';
-import {sourceAttributions} from './memory-chunk.js?v=6aa52b7dd0399c4f';
-import {createTrainingView} from './training.js?v=6aa52b7dd0399c4f';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=6aa52b7dd0399c4f";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=c8fd5841ea600866";
+import { createReviewView } from "./review.js?v=c8fd5841ea600866";
+import { renderCourseGraph } from "./course-graph.js?v=c8fd5841ea600866";
+import {questionInput, choiceTypeField} from './question-input.js?v=c8fd5841ea600866';
+import {readingFields, readingSectionHeading} from './learning-ui.js?v=c8fd5841ea600866';
+import {enhanceTopicContent} from './topic-content.js?v=c8fd5841ea600866';
+import {reportableContent, installContentReporting, installHelpRequests} from './content-report.js?v=c8fd5841ea600866';
+import {createCatalogPicker} from './catalog-picker.js?v=c8fd5841ea600866';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=c8fd5841ea600866';
+import {createAtomicView} from './atomic.js?v=c8fd5841ea600866';
+import {sourceAttributions} from './memory-chunk.js?v=c8fd5841ea600866';
+import {createTrainingView} from './training.js?v=c8fd5841ea600866';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=c8fd5841ea600866";
 
-import {createPaperView} from './review-papers.js?v=6aa52b7dd0399c4f';
-import {createContextLibraryView} from './context-library.js?v=6aa52b7dd0399c4f';
+import {createPaperView} from './review-papers.js?v=c8fd5841ea600866';
+import {createContextLibraryView} from './context-library.js?v=c8fd5841ea600866';
 
-import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=6aa52b7dd0399c4f';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=6aa52b7dd0399c4f';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=6aa52b7dd0399c4f';
-import {createStudentDashboard} from './student-dashboard.js?v=6aa52b7dd0399c4f';
+import {renderTaskTree, enhanceMarkdownOutline} from './task-tree.js?v=c8fd5841ea600866';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=c8fd5841ea600866';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=c8fd5841ea600866';
+import {createStudentDashboard} from './student-dashboard.js?v=c8fd5841ea600866';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -38,7 +38,7 @@ const roundButton = (text, action) => control(text, "portalStart", action);
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=6aa52b7dd0399c4f').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=c8fd5841ea600866').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }
@@ -802,12 +802,23 @@ export function initPortal(bridge) {
     }
   }
   function taskTree(pending, data, view = {}) {
-    renderTaskTree(pending, {...data, tasks: view.review ? data.tasks : data.tasks.filter(task => task.type === 'Lesson')}, {
-      renderTask: task => incompleteTask(task, data, view), expanded: expandedUnits,
+    renderTaskTree(pending, {...data,
+      tasks: view.entries || (view.review ? data.tasks : data.tasks.filter(task => task.type === 'Lesson')),
+      pending_hierarchy: view.hierarchy || data.pending_hierarchy}, {
+      renderTask: task => task.presentation === 'draft' ? draftTopicCard(task) : incompleteTask(task, data, view), expanded: expandedUnits,
       keyPrefix: `${bridge.getAccess()?.learner_id}:${view.review ? 'review' : view.training ? 'training' : ''}`,
       sourceOrder: view.sourceOrder || [],
       defaultOpen: Boolean(view.review),
     });
+  }
+  function draftTopicCard(entry) {
+    const card = node('article', 'portalTask taskUnlocked sourceDraft');
+    card.dataset.taskId = entry.id; card.dataset.topicId = entry.topic_id;
+    card.dataset.dependencyReady = 'true';
+    const open = control('', 'taskToggle', () => navigate(`/topic/${encode(entry.topic_id)}`));
+    open.setAttribute('aria-label', `${t('portal.draft')} · ${entry.title}`);
+    open.append(taskSummary(entry, false, {label: t('portal.draft')}));
+    card.append(open); return card;
   }
   // One preference and one filter for learning tasks and question-bank groups.
   // Other locks (pause, cooldown, maintenance) are deliberately unaffected.
@@ -861,25 +872,13 @@ export function initPortal(bridge) {
     if (taskId) { renderAnswers(tasks, taskId, ticket); return; }
     tasks.append(taskVisibilityOptions(tasks));
     const pending = node("section", "incompleteTasks"); pending.setAttribute("aria-label", t("portal.pending.tasks.64"));
+    const display = courseDisplayEntries(data, catalog?.courses.find(course => course.id === data.course.id)?.outline || []);
     if (data.course_hierarchy_enabled && allowed("course_hierarchy")) {
       for (const task of data.tasks.filter(task => task.type !== "Lesson")) pending.append(incompleteTask(task, data));
-      taskTree(pending, data);
-    } else for (const task of data.tasks) pending.append(incompleteTask(task, data));
-    const readable = data.topics.filter(topic => topic.status === 'read_only');
-    if (readable.length) {
-      const reading = node('section', 'sourceCourseReading'); reading.append(node('h2', '', '课程阅读'));
-      reading.append(node('p', 'featureNotice', '以下内容已保存，可阅读原文。原材料尚不满足训练条件。'));
-      for (const unit of data.units || []) {
-        const members = readable.filter(t => unit.topic_ids.includes(t.id)); if (!members.length) continue;
-        const group = node('details', 'sourceReadingGroup'); group.open = readable.length < 20;
-        group.append(node('summary', '', unit.title));
-        const list = node('ul');
-        for (const topic of members) { const row = node('li'); row.append(link(topic.title, `/topic/${encode(topic.id)}`)); list.append(row); }
-        group.append(list); reading.append(group);
-      }
-      pending.append(reading);
-    }
-    if (!data.tasks.length && !readable.length) {
+      taskTree(pending, data, {entries: display.entries.filter(task => task.type === 'Lesson' || task.presentation === 'draft'),
+        hierarchy: display.hierarchy, sourceOrder: display.sourceOrder});
+    } else for (const entry of display.entries) pending.append(entry.presentation === 'draft' ? draftTopicCard(entry) : incompleteTask(entry, data));
+    if (!data.tasks.length && !display.drafts.length) {
       const empty = emptyBox(percent(data.course.progress) === 100 ? t("portal.all.current.tasks.in.this.course.are.complete.65") : t("portal.no.tasks.are.available.to.start.we.will.check.again.shortly.66") );
       empty.append(control(t("portal.check.again.67"), "textButton", () => route())); pending.append(empty);
     }
