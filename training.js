@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=c8fd5841ea600866';
-import {answerReady, answerEmpty} from './question-input.js?v=c8fd5841ea600866';
-import {createLearningCache} from './learning-cache.js?v=c8fd5841ea600866';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=c8fd5841ea600866';
-import {helpableContent} from './content-report.js?v=c8fd5841ea600866';
-import {ratingChoices} from './self-assessment.js?v=c8fd5841ea600866';
-import {pointAssessment} from './point-assessment.js?v=c8fd5841ea600866';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c8fd5841ea600866';
+import {t, translateMessage} from './i18n.js?v=a7c4769aa6a59fd6';
+import {answerReady, answerEmpty} from './question-input.js?v=a7c4769aa6a59fd6';
+import {createLearningCache} from './learning-cache.js?v=a7c4769aa6a59fd6';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=a7c4769aa6a59fd6';
+import {helpableContent} from './content-report.js?v=a7c4769aa6a59fd6';
+import {ratingChoices} from './self-assessment.js?v=a7c4769aa6a59fd6';
+import {pointAssessment} from './point-assessment.js?v=a7c4769aa6a59fd6';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=a7c4769aa6a59fd6';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=c8fd5841ea600866';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=a7c4769aa6a59fd6';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -197,7 +197,6 @@ export function createTrainingView(bridge) {
       for (const value of Object.values(nextGroup.reader_states || {})) remember(value);
       for (const [id, value] of Object.entries(nextGroup.reader_histories || {})) histories.set(id + ':0', value);
       if(group.external_providers?.includes('hyperskill')) {
-        void refreshHyperskill(e);
         onlineHandler = () => resumeHyperskill(e);
         window.addEventListener('online', onlineHandler);
       }
@@ -333,7 +332,7 @@ export function createTrainingView(bridge) {
       if (!embedded) history.replaceState(null, '', href(groupPath(group.bank_id, group.id, questionId)
         + (reviewCard ? '&card=1&attempt=' + encode(state.attempt_id) : '')));
       current = remember(state); startClock(state); renderSidebar(); renderQuestion();
-      if(state.hyperskill && !state.preview && state.phase==='answer' && state.can_submit) void warmHyperskill(state,e);
+      if(state.hyperskill && !state.hyperskill.local_ide && !state.preview && state.phase==='answer' && state.can_submit) void warmHyperskill(state,e);
     } catch (failure) { if (alive(e, s)) error(main, failure, () => select(questionId, fresh, attemptId)); }
   }
   function renderQuestion() {
@@ -391,7 +390,9 @@ export function createTrainingView(bridge) {
     reader.refs.footerPosition.textContent = t('reader.modulePosition', {current: index + 1, total: group.questions.length});
     reader.refs.saveStatus.textContent = state.preview ? '' : t(state.submission_status === 'pending' || state.submission_status === 'running' ? '答案已提交，正在判题' : '学习进度已保存');
     let primary; const extra = [];
-    if (state.phase === 'answer' && state.hyperskill) {
+    if (state.phase === 'answer' && state.hyperskill?.local_ide) {
+      primary = academyAnswer({...state, academy:state.hyperskill.local_ide}, e, s);
+    } else if (state.phase === 'answer' && state.hyperskill) {
       hyperskillAnswer(state, e, s);
     } else if (state.phase === 'answer' && state.academy) {
       primary = academyAnswer(state, e, s);
@@ -519,7 +520,7 @@ export function createTrainingView(bridge) {
     if(e===epoch&&!document.hidden&&hyperskillAvailability!==true)void refreshHyperskill(e);
   }
   function refreshHyperskill(e) {
-    if(e!==epoch||document.hidden||hyperskillBusy)return Promise.resolve();
+    if(e!==epoch||document.hidden||hyperskillBusy||current?.hyperskill?.local_ide)return Promise.resolve();
     if(hyperskillRecovery)return hyperskillRecovery;
     clearTimeout(hyperskillTimer);hyperskillTimer=null;
     const recovery=(async()=>{
@@ -552,6 +553,7 @@ export function createTrainingView(bridge) {
     if(hyperskillAvailability)main.querySelector('.trainingError[data-hyperskill-connection]')?.remove();
   }
   async function warmHyperskill(state,e,force=false) {
+    if(state.hyperskill?.local_ide)return null;
     if(!force && !await probeHyperskill(e))return null;
     if(e!==epoch)return null;
     let entry=hyperskillWarm.get(state.attempt_id);
@@ -711,7 +713,8 @@ export function createTrainingView(bridge) {
     try {
       const next = await request('training/state?' + query({attempt_id: state.attempt_id}));
       if (!alive(e, s)) return;
-      if (next.phase === state.phase && JSON.stringify(next.academy) === JSON.stringify(state.academy)) {
+      if (next.phase === state.phase && JSON.stringify(next.academy || next.hyperskill?.local_ide) ===
+          JSON.stringify(state.academy || state.hyperskill?.local_ide)) {
         timer = setTimeout(() => pollAcademy(e, s, next), 1500);
         return;
       }
@@ -831,7 +834,7 @@ export function createTrainingView(bridge) {
       };
       document.addEventListener('visibilitychange', visibilityHandler);
       if (group.external_providers?.includes('hyperskill')) {
-        void refreshHyperskill(e); onlineHandler = () => resumeHyperskill(e); window.addEventListener('online', onlineHandler);
+        onlineHandler = () => resumeHyperskill(e); window.addEventListener('online', onlineHandler);
       }
       await select(reference.question_id);
       if (e === epoch) scheduleValidation();

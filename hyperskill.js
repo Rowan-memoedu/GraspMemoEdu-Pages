@@ -1,5 +1,5 @@
-import {questionInput,answerReady,choiceTypeField} from './question-input.js?v=c8fd5841ea600866';
-import {enhanceSourceContent} from './topic-content.js?v=c8fd5841ea600866';
+import {questionInput,answerReady,choiceTypeField} from './question-input.js?v=a7c4769aa6a59fd6';
+import {enhanceSourceContent} from './topic-content.js?v=a7c4769aa6a59fd6';
 
 export async function localHyperskill(action,body,{timeout=120000}={}) {
   let response;
@@ -131,6 +131,15 @@ export function hyperskillQuestion(box,{question,history,disabled,data,draft,onD
     records.forEach(r=>{
       const li=node('li','',`${r.status==='correct'?'通过':'未通过'} · 提交 ${r.submission_id}`);
       if(r.feedback)li.append(node('p','inputHint',r.feedback));
+      list.append(li);
+    });
+    box.append(list);
+  }
+  if(question.hyperskill.code_checks?.length) {
+    const list=node('ol','hyperskillReceipts');
+    question.hyperskill.code_checks.forEach((record,index)=>{
+      const li=node('li','',`IDEA 检查 ${index+1}`);
+      if(record.feedback)li.append(node('p','inputHint',record.feedback));
       list.append(li);
     });
     box.append(list);
