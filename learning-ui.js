@@ -1,8 +1,8 @@
-import {t, learningTitle} from './i18n.js?v=c6cdc71810c7700d';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=c6cdc71810c7700d';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=c6cdc71810c7700d';
-import {enhanceTopicContent} from './topic-content.js?v=c6cdc71810c7700d';
-import {sourceAttributions} from './memory-chunk.js?v=c6cdc71810c7700d';
+import {t, learningTitle} from './i18n.js?v=c1033c370c1469ec';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=c1033c370c1469ec';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=c1033c370c1469ec';
+import {enhanceTopicContent} from './topic-content.js?v=c1033c370c1469ec';
+import {sourceAttributions} from './memory-chunk.js?v=c1033c370c1469ec';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -62,6 +62,9 @@ export function renderMultiStep(target, view, {references, decorate = body => bo
       if (part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
         id: `step-answer-${part.id}`, value: part.result.answer, stem: body, disabled: true}).element);
       else panel.append(submittedAnswer(part, part.result.answer, part.result.answer_display));
+      if (part.result.self_rating != null && part.interaction?.type !== 'text') {
+        panel.append(node('p', 'inputHint', part.result.answer_display));
+      }
     } else if (view.finished && part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
       id: `step-answer-${part.id}`, value: '', stem: body, disabled: true}).element);
     group.append(panel);

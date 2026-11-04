@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=c6cdc71810c7700d';
-import {answerReady, answerEmpty} from './question-input.js?v=c6cdc71810c7700d';
-import {createLearningCache} from './learning-cache.js?v=c6cdc71810c7700d';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=c6cdc71810c7700d';
-import {helpableContent} from './content-report.js?v=c6cdc71810c7700d';
-import {ratingChoices} from './self-assessment.js?v=c6cdc71810c7700d';
-import {pointAssessment} from './point-assessment.js?v=c6cdc71810c7700d';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c6cdc71810c7700d';
+import {t, translateMessage} from './i18n.js?v=c1033c370c1469ec';
+import {answerReady, answerEmpty} from './question-input.js?v=c1033c370c1469ec';
+import {createLearningCache} from './learning-cache.js?v=c1033c370c1469ec';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=c1033c370c1469ec';
+import {helpableContent} from './content-report.js?v=c1033c370c1469ec';
+import {ratingChoices} from './self-assessment.js?v=c1033c370c1469ec';
+import {pointAssessment} from './point-assessment.js?v=c1033c370c1469ec';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c1033c370c1469ec';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=c6cdc71810c7700d';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=c1033c370c1469ec';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -429,7 +429,8 @@ export function createTrainingView(bridge) {
         disable(true);
         try {
           let next;
-          if (state.can_self_rate && answerEmpty(input) && !state.submission_id && !savedPayload) next = await post('reveal', {attempt_id: state.attempt_id});
+          if (state.can_self_rate && answerEmpty(input) && !state.submission_id && !savedPayload) next = await post('reveal', {attempt_id: state.attempt_id,
+            ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})});
           else {
             const payload = savedPayload || {request_id: state.submission_id || crypto.randomUUID(), attempt_id: state.attempt_id, answer: input.value, elapsed_ms: duration,
               ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})};
@@ -463,13 +464,14 @@ export function createTrainingView(bridge) {
       }
     }
     if (!state.academy && !state.hyperskill && (state.phase === 'shown' || state.phase === 'done' && (state.result.self_rating || state.result.stop_requested))) {
-      const ratings = ratingChoices({labels: ratingKeys.slice(1),
+      const ratings = ratingChoices({labels: ratingKeys.slice(1, state.multi_step ? 5 : undefined),
         selected: state.result?.stop_requested ? 5 : state.result?.self_rating,
         disabled: state.phase === 'done' || !state.can_self_rate || !state.can_submit,
         onRate: async rating => {
           try {
             const next = rating === 5 ? await post('stop', {attempt_id: state.attempt_id})
-              : await post('rate', {attempt_id: state.attempt_id, rating, elapsed_ms: flushClock()});
+              : await post('rate', {attempt_id: state.attempt_id, rating, elapsed_ms: flushClock(),
+                ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})});
             if (!alive(e, s)) return;
             current = next; await refreshGroup(e, s); if (alive(e, s)) renderQuestion();
           } catch (failure) { if (alive(e, s)) error(main, failure); }

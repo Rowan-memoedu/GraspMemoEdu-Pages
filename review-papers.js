@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=c6cdc71810c7700d';
-import {answerEditor, readerFrame, renderReviewReader, renderMultiStep} from './learning-ui.js?v=c6cdc71810c7700d';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=c6cdc71810c7700d';
-import {createLearningCache} from './learning-cache.js?v=c6cdc71810c7700d';
-import {helpableContent, reportableContent} from './content-report.js?v=c6cdc71810c7700d';
+import {t, translateMessage} from './i18n.js?v=c1033c370c1469ec';
+import {answerEditor, readerFrame, renderReviewReader, renderMultiStep} from './learning-ui.js?v=c1033c370c1469ec';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=c1033c370c1469ec';
+import {createLearningCache} from './learning-cache.js?v=c1033c370c1469ec';
+import {helpableContent, reportableContent} from './content-report.js?v=c1033c370c1469ec';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return x; };
-import {createContentTimer} from './content-timer.js?v=c6cdc71810c7700d';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=c6cdc71810c7700d';
-import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=c6cdc71810c7700d';
-import {chunkPeek} from './memory-chunk.js?v=c6cdc71810c7700d';
-import {pointAssessment} from './point-assessment.js?v=c6cdc71810c7700d';
-import {trainingAudio} from './training-audio.js?v=c6cdc71810c7700d';
+import {createContentTimer} from './content-timer.js?v=c1033c370c1469ec';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=c1033c370c1469ec';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=c1033c370c1469ec';
+import {chunkPeek} from './memory-chunk.js?v=c1033c370c1469ec';
+import {pointAssessment} from './point-assessment.js?v=c1033c370c1469ec';
+import {trainingAudio} from './training-audio.js?v=c1033c370c1469ec';
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);
@@ -223,7 +223,8 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
     const e = epoch; busy = true; remember(); clock();
     try {
       await flush();
-      const next = await post('reveal', {paper_id: state.id, index: selected, expected_revision: state.revision});
+      const next = await post('reveal', {paper_id: state.id, index: selected, expected_revision: state.revision,
+        ...(state.items[selected].multi_step ? {step_id: state.items[selected].multi_step.current_step_id} : {})});
       if (e !== epoch) return;
       state = next; render();
     } catch (failure) { if (e === epoch) error(failure); }
@@ -235,11 +236,12 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
     try {
       const item = state.items[selected];
       item.self_rating = rating; item.answer = `自主评分：${rating}`;
-      const draft = {index: selected, answer: item.answer, elapsed_ms: item.elapsed_ms, self_rating: rating};
+      const draft = {index: selected, answer: item.answer, elapsed_ms: item.elapsed_ms, self_rating: rating,
+        ...(item.multi_step ? {step_id: item.multi_step.current_step_id} : {})};
       dirty.set(selected, draft); save('draft', selected, JSON.stringify(draft));
       await flush(); if (e !== epoch) return;
       busy = false;
-      if (state.mode === 'question') await submit(selected);
+      if (item.multi_step || state.mode === 'question') await submit(selected);
       else if (selected + 1 < state.items.length) await select(selected + 1);
       else await submit();
     } catch (failure) { if (e === epoch) error(failure); }
