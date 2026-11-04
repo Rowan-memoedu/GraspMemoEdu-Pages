@@ -1,8 +1,8 @@
-import {t, learningTitle} from './i18n.js?v=a7c4769aa6a59fd6';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=a7c4769aa6a59fd6';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=a7c4769aa6a59fd6';
-import {enhanceTopicContent} from './topic-content.js?v=a7c4769aa6a59fd6';
-import {sourceAttributions} from './memory-chunk.js?v=a7c4769aa6a59fd6';
+import {t, learningTitle} from './i18n.js?v=c6cdc71810c7700d';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=c6cdc71810c7700d';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=c6cdc71810c7700d';
+import {enhanceTopicContent} from './topic-content.js?v=c6cdc71810c7700d';
+import {sourceAttributions} from './memory-chunk.js?v=c6cdc71810c7700d';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -44,6 +44,29 @@ export function readerHistorySteps(state) {
 export function readerContent(html, references) {
   const body = node('div', 'courseContent'); body.innerHTML = html || '';
   enhanceTopicContent(body, references); return body;
+}
+
+export function renderMultiStep(target, view, {references, decorate = body => body} = {}) {
+  const group = node('div', 'multiStepQuestion');
+  group.append(node('p', 'multiStepProgress', t('question.multiStepProgress', {
+    current: Math.min(view.current_index + 1, view.total), total: view.total})));
+  let currentStem;
+  for (const part of view.steps) {
+    const panel = node('section', 'multiStepPart'); panel.dataset.stepId = part.id;
+    panel.append(node('h3', 'multiStepLabel', part.label));
+    const body = decorate(readerContent(part.html, references), `step:${part.id}`); panel.append(body);
+    if (part.id === view.current_step_id) { currentStem = body; panel.classList.add('multiStepCurrent'); }
+    if (part.result) {
+      panel.append(node('p', part.result.correct ? 'multiStepPassed' : 'multiStepFailed',
+        t(part.result.correct ? 'question.stepPassed' : 'question.stepFailed')));
+      if (part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
+        id: `step-answer-${part.id}`, value: part.result.answer, stem: body, disabled: true}).element);
+      else panel.append(submittedAnswer(part, part.result.answer, part.result.answer_display));
+    } else if (view.finished && part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
+      id: `step-answer-${part.id}`, value: '', stem: body, disabled: true}).element);
+    group.append(panel);
+  }
+  target.append(group); return currentStem;
 }
 
 export function readingFields(target, step, {references, decorate = body => body} = {}) {
@@ -110,15 +133,17 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   const heading = node('div', 'stepHeader'), titleNode = node('h2', 'stepTitle', title);
   titleNode.id = titleId; titleNode.tabIndex = -1; heading.append(titleNode);
   if (counter) heading.append(node('span', 'stepCounter', counter));
-  const stem = decorate(readerContent(step.html, references), 'question');
+  let stem = decorate(readerContent(step.html, references), 'question');
   target.setAttribute('aria-labelledby', titleId); target.replaceChildren(heading, stem);
   const sectionHeading = readingSectionHeading(step.section); if (sectionHeading) target.prepend(sectionHeading);
   readingFields(target, step, {references, decorate});
   const attributions = sourceAttributions(step.source_attributions); if (attributions) target.append(attributions);
   const typeField = choiceTypeField(step.interaction); if (typeField) heading.after(typeField);
   if (notice) heading.after(node('p', 'introductionUpdateNotice', notice));
+  if (step.multi_step) stem = renderMultiStep(target, step.multi_step, {references, decorate}) || stem;
   if (showSubmittedInteraction && step.interaction && step.interaction.type !== 'text')
-    target.append(questionInput(step.interaction, {id: submittedId, stem, value: submittedValue, disabled: true}).element);
+    target.append(questionInput(step.interaction, {id: submittedId, stem, value: submittedValue, disabled: true,
+      feedback: showExplanation ? referenceSource.choice_feedback : null}).element);
   if (showAnswer) {
     const answer = node('details', 'submittedAnswer');
     answer.append(node('summary', '', t('查看已提交答案')), submittedAnswer(step, step.answer, step.answer_display ?? step.answer)); target.append(answer);
@@ -134,7 +159,7 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   if (showExplanation) {
     const reference = referenceAnswer(referenceSource); if (reference) target.append(reference);
     if (step.explanation_html) target.append(node('h3', 'exampleExplanationHeader', t('Explanation · 解析')),
-      prepareAnswerContent(decorate(readerContent(step.explanation_html, references), 'explanation')));
+      prepareAnswerContent(decorate(readerContent(step.explanation_html, references), 'explanation'), {explanation: true}));
   }
   return {heading, title: titleNode, stem};
 }

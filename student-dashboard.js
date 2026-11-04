@@ -1,8 +1,8 @@
-import {t, locale, learningTitle, translateMessage} from './i18n.js?v=a7c4769aa6a59fd6';
-import {renderTaskTree, createOutlineGroup} from './task-tree.js?v=a7c4769aa6a59fd6';
-import {questionInput, choiceTypeField} from './question-input.js?v=a7c4769aa6a59fd6';
-import {submittedAnswer, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=a7c4769aa6a59fd6';
-import {enhanceTopicContent} from './topic-content.js?v=a7c4769aa6a59fd6';
+import {t, locale, learningTitle, translateMessage} from './i18n.js?v=c6cdc71810c7700d';
+import {renderTaskTree, createOutlineGroup} from './task-tree.js?v=c6cdc71810c7700d';
+import {questionInput, choiceTypeField} from './question-input.js?v=c6cdc71810c7700d';
+import {submittedAnswer, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=c6cdc71810c7700d';
+import {enhanceTopicContent} from './topic-content.js?v=c6cdc71810c7700d';
 
 const el = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text != null) n.textContent = text; return n; };
 const button = (text, action, cls = 'secondaryButton') => { const n = el('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
@@ -112,7 +112,7 @@ export function createStudentDashboard(data, {request, formatDate, timezone, day
       card.append(stem); prepareAnswerContent(stem); enhanceTopicContent(stem);
       const type = choiceTypeField(item.interaction); if (type) stem.prepend(type);
       if (item.interaction && item.interaction.type !== 'text') {
-        const input = questionInput(item.interaction, {id: `student-answer-${++readerId}`, value: item.answer || '', stem, disabled: true});
+        const input = questionInput(item.interaction, {id: `student-answer-${++readerId}`, value: item.answer || '', stem, disabled: true, feedback: item.choice_feedback});
         card.append(input.element);
       }
     } else card.append(hint(t('students.missingSnapshot')));
@@ -122,7 +122,7 @@ export function createStudentDashboard(data, {request, formatDate, timezone, day
     if (item.content_available) {
       const reference = referenceAnswer(item); if (reference) card.append(reference);
       const explanation = el('div', 'courseContent studentExplanation'); explanation.innerHTML = item.explanation_html;
-      card.append(title(t('Explanation · 解析')), explanation); prepareAnswerContent(explanation); enhanceTopicContent(explanation);
+      card.append(title(t('Explanation · 解析')), explanation); prepareAnswerContent(explanation, {explanation: true}); enhanceTopicContent(explanation);
     }
     return card;
   }

@@ -1,4 +1,44 @@
-@import url('./vendor/book-font/font.css?v=a7c4769aa6a59fd6');
+@import url('./vendor/book-font/font.css?v=c6cdc71810c7700d');
+/* Hallmark · component: answers · existing book typography and semantic colours
+ * pre-emit critique: P4 H5 E4 S5 R5 V4 */
+:root {
+  --answer-font: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --answer-true: var(--green);
+  --answer-false: #b42328;
+  --answer-true-background: #f0f7f2;
+  --answer-false-background: #fff3f2;
+}
+.answerContent {
+  font-family: var(--answer-font); font-size: 19px; line-height: 1.9;
+  max-width: 38em; min-width: 0; margin-inline: auto;
+  white-space: normal; word-break: normal; line-break: strict; overflow-wrap: break-word;
+}
+.courseContent.answerContent p, .answerContent .outlineNode > p { margin-block: .8em; line-height: inherit; }
+.answerContent :is(ul,ol) { padding-left: 1.5em; }
+.answerContent li + li { margin-top: .85em; }
+.answerContent .mathDisplay, .answerContent .answerMatrix {
+  display: block; max-width: 100%; margin-block: .9em; padding-block: .25em;
+  text-align: center; overflow-x: auto; overflow-y: hidden; letter-spacing: normal;
+}
+.answerContent .answerMatrix mjx-container { display: inline-block; }
+.answerContent :is(.mathDisplay,.answerMatrix) mjx-container[jax="SVG"] > svg { max-width: none; }
+.answerContent .mathInline:not(.answerMatrix) { display: inline-block; max-width: 100%; vertical-align: middle; overflow-x: auto; }
+.answerContent.explanationContent .explanationItem + .explanationItem { margin-top: 1.1em; }
+.choiceOption[data-answer-truth] { flex-wrap: wrap; align-items: flex-start; }
+.choiceOption[data-answer-truth] .choiceBody { flex: 1; }
+.choiceOption[data-answer-truth="true"]:has(input) { color: var(--answer-true); border-color: var(--answer-true); background: var(--answer-true-background); }
+.choiceOption[data-answer-truth="false"]:has(input) { color: var(--answer-false); border-color: var(--answer-false); background: var(--answer-false-background); }
+.choiceOption[data-answer-truth] input { accent-color: currentColor; }
+.choiceFeedbackLabels { display: flex; flex-basis: 100%; gap: .7em; padding-left: 2em; font-size: .8rem; }
+.choiceFeedbackLabel { white-space: nowrap; font-weight: 600; }
+@media (max-width: 480px) { .answerContent { font-size: 18px; line-height: 1.95; } }
+.multiStepQuestion { min-width: 0; }
+.multiStepProgress { color: var(--muted); font-size: .9rem; }
+.multiStepPart { min-width: 0; margin-block: 1.3rem; padding-block: .25rem .9rem; border-bottom: 1px solid var(--ma-border); }
+.multiStepLabel { color: var(--ma-navy); margin: .4rem 0 1rem; font-size: 1rem; font-style: normal; }
+.multiStepPassed { color: var(--answer-true); }
+.multiStepFailed { color: var(--answer-false); }
+.multiStepPart > pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .courseContent.reading-outline { --article-font-size: 18px; --article-line-height: 1.75; }
 .courseContent [id^="node-"] { scroll-margin-block: 6rem; }
 .courseContent [id^="node-"]:focus { outline: 2px solid var(--accent, #806449); outline-offset: 4px; }

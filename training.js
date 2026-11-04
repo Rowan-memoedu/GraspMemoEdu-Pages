@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=a7c4769aa6a59fd6';
-import {answerReady, answerEmpty} from './question-input.js?v=a7c4769aa6a59fd6';
-import {createLearningCache} from './learning-cache.js?v=a7c4769aa6a59fd6';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=a7c4769aa6a59fd6';
-import {helpableContent} from './content-report.js?v=a7c4769aa6a59fd6';
-import {ratingChoices} from './self-assessment.js?v=a7c4769aa6a59fd6';
-import {pointAssessment} from './point-assessment.js?v=a7c4769aa6a59fd6';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=a7c4769aa6a59fd6';
+import {t, translateMessage} from './i18n.js?v=c6cdc71810c7700d';
+import {answerReady, answerEmpty} from './question-input.js?v=c6cdc71810c7700d';
+import {createLearningCache} from './learning-cache.js?v=c6cdc71810c7700d';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=c6cdc71810c7700d';
+import {helpableContent} from './content-report.js?v=c6cdc71810c7700d';
+import {ratingChoices} from './self-assessment.js?v=c6cdc71810c7700d';
+import {pointAssessment} from './point-assessment.js?v=c6cdc71810c7700d';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c6cdc71810c7700d';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=a7c4769aa6a59fd6';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=c6cdc71810c7700d';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -39,6 +39,7 @@ export function createTrainingView(bridge) {
   const read = (kind, id) => cache.read(localStorage, key(kind, id));
   const save = (kind, id, value) => cache.write(localStorage, key(kind, id), value);
   const alive = (e, s = selection) => e === epoch && s === selection;
+  const answerKey = value => value.multi_step ? `${value.attempt_id}:${value.multi_step.current_step_id || 'done'}` : value.attempt_id;
   const link = (label, path, cls = '') => { const a = node('a', cls, label); a.href = href(path); return a; };
   const bankPath = bank => `/banks/${encode(bank)}${selectedRoot ? '?root=' + encode(selectedRoot) : ''}`;
   const groupPath = (bank, id, question) => {
@@ -48,6 +49,11 @@ export function createTrainingView(bridge) {
     return `/banks/${encode(bank)}/${encode(id)}${params.size ? '?' + params : ''}`;
   };
   function remember(value) {
+    const previous = value?.attempt_id && attempts.get(value.attempt_id);
+    if (previous?.multi_step && answerKey(previous) !== answerKey(value)) {
+      for (const kind of ['draft', 'submission', 'elapsed']) save(kind, answerKey(previous), null);
+      if (clockKey === answerKey(previous)) { activeSince = null; startClock(value); }
+    }
     if (value?.attempt_id) attempts.set(value.attempt_id, value);
     return value;
   }
@@ -93,7 +99,7 @@ export function createTrainingView(bridge) {
     return Math.min(86400000, Math.round(elapsed));
   }
   function startClock(state) {
-    clockKey = state.attempt_id; elapsed = Number(read('elapsed', clockKey)) || 0;
+    clockKey = answerKey(state); elapsed = Number(read('elapsed', clockKey)) || 0;
     activeSince = state.phase === 'answer' && !state.submission_id && !document.hidden ? performance.now() : null;
   }
   function stop() {
@@ -350,12 +356,13 @@ export function createTrainingView(bridge) {
         state.stopped && !result.stop_requested ? t('training.stopped') : result.practice_only && !state.stopped ? t('training.practice') : null,
         state.due_at ? t('training.nextDue', {time: formatDate(state.due_at)}) : null]} : null;
     const {stem} = renderReaderStep(main, {...state.question, answer: state.answer, answer_display: state.answer_display,
-      explanation_html: state.explanation_html}, {titleId: 'trainingStepTitle', title: t('training.exercise', {number: index + 1}),
+      explanation_html: state.explanation_html, multi_step: state.multi_step}, {titleId: 'trainingStepTitle', title: t('training.exercise', {number: index + 1}),
       counter: t('reader.modulePosition', {current: index + 1, total: group.questions.length}),
       showSubmittedInteraction: state.phase !== 'answer', submittedId: 'trainingSubmittedInteraction',
       showAnswer: Boolean(state.answer_display && state.phase === 'done'), feedback, feedbackClass: 'trainingVerdict',
       referenceSource: state, decorate: (body, kind) => {
-        helpableContent(body, reportContext, `${kind}:${state.question_id}`, state.version);
+        const blockKind = state.multi_step && kind === 'question' ? 'context' : kind;
+        helpableContent(body, reportContext, `${blockKind}:${state.question_id}`, state.version);
         if (kind === 'question' && state.can_learn && !state.linked_points) {
           const actions = node('div', 'trainingNotebookActions'); actions.dataset.helpAction = 'notebook';
           const add = button('', 'textButton trainingNotebookButton', async () => {
@@ -397,9 +404,10 @@ export function createTrainingView(bridge) {
     } else if (state.phase === 'answer' && state.academy) {
       primary = academyAnswer(state, e, s);
     } else if (state.phase === 'answer') {
+      const draftKey = answerKey(state);
       let savedPayload = null;
-      try { savedPayload = JSON.parse(read('submission', state.attempt_id)); } catch {}
-      const draft = savedPayload?.answer ?? (state.answer || read('draft', state.attempt_id) || '');
+      try { savedPayload = JSON.parse(read('submission', draftKey)); } catch {}
+      const draft = savedPayload?.answer ?? (state.answer || read('draft', draftKey) || '');
       const {form, input, submit, bottom} = answerEditor(state.question, stem, draft,
         {formId: 'trainingAnswerForm', inputId: 'trainingAnswer', submitId: 'trainingSubmit', canSelfRate: state.can_self_rate && state.can_submit});
       form.classList.add('trainingAnswerForm');
@@ -408,12 +416,12 @@ export function createTrainingView(bridge) {
       const failed = state.submission_status === 'error';
       const refresh = () => {
         const show = state.can_self_rate && answerEmpty(input) && !state.submission_id;
-        submit.textContent = pending ? t('training.checking') : failed || savedPayload ? t('training.retry') : t(show ? 'training.show' : 'training.submit');
+        submit.textContent = pending ? t('training.checking') : failed || savedPayload ? t('training.retry') : t(show ? 'training.show' : state.multi_step ? 'question.submitStep' : 'training.submit');
         submit.disabled = pending || !state.can_submit || (!failed && !savedPayload && !show && !answerReady(input));
       };
       disable(pending || failed || Boolean(savedPayload) || !state.can_submit);
       form.append(bottom); main.append(form); primary = submit;
-      input.addEventListener('input', () => { save('draft', state.attempt_id, input.value); refresh(); });
+      input.addEventListener('input', () => { save('draft', draftKey, input.value); refresh(); });
       input.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); form.requestSubmit(); } });
       form.addEventListener('submit', async event => {
         event.preventDefault(); if (submit.disabled) return;
@@ -423,9 +431,10 @@ export function createTrainingView(bridge) {
           let next;
           if (state.can_self_rate && answerEmpty(input) && !state.submission_id && !savedPayload) next = await post('reveal', {attempt_id: state.attempt_id});
           else {
-            const payload = savedPayload || {request_id: state.submission_id || crypto.randomUUID(), attempt_id: state.attempt_id, answer: input.value, elapsed_ms: duration};
+            const payload = savedPayload || {request_id: state.submission_id || crypto.randomUUID(), attempt_id: state.attempt_id, answer: input.value, elapsed_ms: duration,
+              ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})};
             savedPayload = payload;
-            save('submission', state.attempt_id, JSON.stringify(payload));
+            save('submission', draftKey, JSON.stringify(payload));
             next = await post('submit', payload);
           }
           if (!alive(e, s)) return;

@@ -1,7 +1,7 @@
-import {t} from './i18n.js?v=a7c4769aa6a59fd6';
-import {prepareLiteralMath} from './math-presentation.js?v=a7c4769aa6a59fd6';
-import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut} from './composite-input.js?v=a7c4769aa6a59fd6';
-import {enhanceSourceContent} from './topic-content.js?v=a7c4769aa6a59fd6';
+import {t} from './i18n.js?v=c6cdc71810c7700d';
+import {prepareLiteralMath} from './math-presentation.js?v=c6cdc71810c7700d';
+import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut} from './composite-input.js?v=c6cdc71810c7700d';
+import {enhanceSourceContent} from './topic-content.js?v=c6cdc71810c7700d';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;
@@ -21,7 +21,7 @@ export function choiceTypeField(spec) {
 
 // The serialized answer uses the existing draft, retry and idempotency path.
 // This component receives presentation metadata only, never answer keys.
-export function questionInput(spec, {id, value = '', stem, disabled = false, formId} = {}) {
+export function questionInput(spec, {id, value = '', stem, disabled = false, formId, feedback} = {}) {
   if (spec.type === 'composite') return compositeInput(spec, {id, value, stem, disabled, formId});
   const root = node('div', 'questionInteraction');
   root.dataset.questionType = spec.type;
@@ -176,6 +176,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
     const list = node('div', 'choiceList'); list.setAttribute('role', spec.multiple ? 'group' : 'radiogroup');
     spec.options.forEach((option, index) => {
       const label = node('label', 'choiceOption'), radio = node('input', '');
+      label.dataset.optionId = option.id;
       radio.type = spec.multiple ? 'checkbox' : 'radio'; radio.name = `${id}-choice`; radio.value = option.id;
       radio.disabled = disabled; radio.checked = spec.multiple ? values.selected.includes(option.id) : values.selected === option.id;
       if (formId) radio.setAttribute('form', formId);
@@ -188,6 +189,17 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
         emit(); syncPassage();
       });
       label.append(radio, node('span', 'choiceLetter', String.fromCharCode(65 + index)), body);
+      if (disabled && Array.isArray(feedback?.correct_ids)) {
+        const expected = feedback.correct_ids.includes(option.id);
+        const chosen = radio.checked;
+        if (expected || chosen) {
+          label.dataset.answerTruth = String(feedback.select_incorrect ? !expected : expected);
+          const marks = node('span', 'choiceFeedbackLabels');
+          if (expected) marks.append(node('span', 'choiceFeedbackLabel', t('question.expectedOption')));
+          if (chosen) marks.append(node('span', 'choiceFeedbackLabel', t('question.selectedOption')));
+          label.append(marks);
+        }
+      }
       list.append(label);
     });
     root.append(list); syncPassage();

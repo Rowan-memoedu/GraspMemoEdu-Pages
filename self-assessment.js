@@ -1,6 +1,6 @@
-import {t} from './i18n.js?v=a7c4769aa6a59fd6';
-import {answerEmpty} from './question-input.js?v=a7c4769aa6a59fd6';
-import {prepareLiteralMath} from './math-presentation.js?v=a7c4769aa6a59fd6';
+import {t} from './i18n.js?v=c6cdc71810c7700d';
+import {answerEmpty} from './question-input.js?v=c6cdc71810c7700d';
+import {prepareLiteralMath} from './math-presentation.js?v=c6cdc71810c7700d';
 
 const element = (tag, cls, text) => {
   const node = document.createElement(tag); node.className = cls;
@@ -9,7 +9,9 @@ const element = (tag, cls, text) => {
 };
 
 let mathFragment = 0;
-export function prepareAnswerContent(root) {
+export function prepareAnswerContent(root, {explanation = false} = {}) {
+  root.classList.add('answerContent');
+  if (explanation) prepareExplanationLayout(root);
   prepareLiteralMath(root);
   // Each mounted SVG fragment must resolve its own glyphs, even when the same
   // explanation appears elsewhere in history or in another hidden reader.
@@ -26,6 +28,48 @@ export function prepareAnswerContent(root) {
         if (attr === 'xlink:href') use.setAttributeNS('http://www.w3.org/1999/xlink', attr, next);
         else use.setAttribute(attr, next);
       }
+    }
+  }
+  return root;
+}
+
+// Split only source boundaries. Moving DOM fragments retains TeX, images,
+// emphasis, original wording and content-report offsets; nothing is rewritten.
+export function prepareExplanationLayout(root) {
+  if (root.dataset.explanationLayout) return root;
+  root.dataset.explanationLayout = 'true';
+  root.classList.add('explanationContent');
+  const protectedSelector = 'svg,math,mjx-container,code,pre,a,[data-tex]';
+  for (const paragraph of [...root.querySelectorAll('p')]) {
+    if (paragraph.closest('pre,code,figcaption,[data-help-action]')) continue;
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT), cuts = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement.closest(protectedSelector)) continue;
+      const pattern = /(?:^|[。；;\n])\s*(?=(?:[（(](?:\d{1,2}|[a-h]|I{1,3}|IV|V)[）)]|[①-⑳]|[A-L](?:\s*(?:[.．、:：)）]|选项|项|的|中|可|是|为|错误|正确))))/gu;
+      for (const match of node.textContent.matchAll(pattern)) {
+        const offset = match.index + match[0].length;
+        // The beginning of an existing paragraph is already a boundary.
+        const prefix = document.createRange(); prefix.selectNodeContents(paragraph); prefix.setEnd(node, offset);
+        if (prefix.toString().trim()) cuts.push({node, offset});
+      }
+    }
+    for (const {node, offset} of cuts.reverse()) {
+      if (!paragraph.contains(node)) continue;
+      const range = document.createRange(); range.selectNodeContents(paragraph); range.setStart(node, offset);
+      const next = document.createElement('p'); next.className = 'explanationItem';
+      next.append(range.extractContents()); paragraph.after(next);
+    }
+    paragraph.classList.add('explanationItem');
+  }
+  for (const math of root.querySelectorAll('.mathInline[data-tex]')) {
+    if (/\\begin\{(?:[bpvBV]?matrix|array|aligned|cases)\}/u.test(math.dataset.tex)) {
+      math.classList.add('answerMatrix');
+      // Keep punctuation beside the displayed formula instead of stranding a
+      // comma at the start of the next prose line. Text order stays identical.
+      const next = math.nextSibling;
+      const punctuation = next?.nodeType === Node.TEXT_NODE && next.textContent.match(/^[ \t]*[，,；;。.!！？?：:]+[ \t]*/u)?.[0];
+      if (punctuation) { math.append(document.createTextNode(punctuation)); next.deleteData(0, punctuation.length); }
     }
   }
   return root;
@@ -97,7 +141,7 @@ export function selfAssessment(question, input, {disabled = false, reveal, rate,
     box.append(show); return box;
   }
   const reference = referenceAnswer(question); if (reference) box.append(reference);
-  if (explanation) box.append(element('h3', 'exampleExplanationHeader', t('Explanation · 解析')), prepareAnswerContent(explanation));
+  if (explanation) box.append(element('h3', 'exampleExplanationHeader', t('Explanation · 解析')), prepareAnswerContent(explanation, {explanation: true}));
   const labels = ['training.again', 'training.hard', 'training.good', 'training.easy'];
   if (question.can_stop_reviews) labels.push('training.retire');
   const ratings = ratingChoices({labels, disabled, selected: question.self_rating, onRate: rate});

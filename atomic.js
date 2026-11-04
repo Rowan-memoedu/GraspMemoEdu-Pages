@@ -1,14 +1,14 @@
-import {t, translateMessage} from './i18n.js?v=a7c4769aa6a59fd6';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=a7c4769aa6a59fd6';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=a7c4769aa6a59fd6';
-import {reportableContent} from './content-report.js?v=a7c4769aa6a59fd6';
-import {createLearningCache} from './learning-cache.js?v=a7c4769aa6a59fd6';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=a7c4769aa6a59fd6';
-import {enhanceSourceContent} from './topic-content.js?v=a7c4769aa6a59fd6';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=a7c4769aa6a59fd6';
-import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=a7c4769aa6a59fd6';
-import {pointAssessment} from './point-assessment.js?v=a7c4769aa6a59fd6';
-import {trainingAudio} from './training-audio.js?v=a7c4769aa6a59fd6';
+import {t, translateMessage} from './i18n.js?v=c6cdc71810c7700d';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=c6cdc71810c7700d';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=c6cdc71810c7700d';
+import {reportableContent} from './content-report.js?v=c6cdc71810c7700d';
+import {createLearningCache} from './learning-cache.js?v=c6cdc71810c7700d';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c6cdc71810c7700d';
+import {enhanceSourceContent} from './topic-content.js?v=c6cdc71810c7700d';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=c6cdc71810c7700d';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=c6cdc71810c7700d';
+import {pointAssessment} from './point-assessment.js?v=c6cdc71810c7700d';
+import {trainingAudio} from './training-audio.js?v=c6cdc71810c7700d';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
@@ -226,7 +226,7 @@ export function createAtomicView(bridge) {
     let input;
     const value = history || question.phase === 'feedback' ? question.answer || '' : read(draftKey()) || '';
     if (question.interaction && question.interaction.type !== 'text') {
-      const widget = questionInput(question.interaction, {id: 'atomicAnswer', value, stem, disabled, formId: form.id});
+      const widget = questionInput(question.interaction, {id: 'atomicAnswer', value, stem, disabled, formId: form.id, feedback: question.choice_feedback});
       input = widget.input; form.append(widget.element);
     } else {
       const label = node('label', '', t('atomic.answer')); label.htmlFor = 'atomicAnswer';
@@ -267,7 +267,7 @@ export function createAtomicView(bridge) {
       if (question.reason) feedback.append(node('p', '', question.reason));
       const points = pointAssessment(question.assessment_result, question.interaction); if (points) feedback.append(points);
       const reference = referenceAnswer(question); if (reference) feedback.append(reference);
-      feedback.append(prepareAnswerContent(marked(question.explanation_html, `explanation:${question.card_id}`, question.card_id)));
+      feedback.append(prepareAnswerContent(marked(question.explanation_html, `explanation:${question.card_id}`, question.card_id), {explanation: true}));
       box.append(feedback);
       if (!history && !state.pause) box.append(button(t('atomic.continue'), () => mutate('continue'), 'primaryButton'));
     }
