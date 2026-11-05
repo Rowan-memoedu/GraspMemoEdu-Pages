@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=c1033c370c1469ec';
-import {answerEditor, readerFrame, renderReviewReader, renderMultiStep} from './learning-ui.js?v=c1033c370c1469ec';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=c1033c370c1469ec';
-import {createLearningCache} from './learning-cache.js?v=c1033c370c1469ec';
-import {helpableContent, reportableContent} from './content-report.js?v=c1033c370c1469ec';
+import {t, translateMessage} from './i18n.js?v=cbc040bddb72113e';
+import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=cbc040bddb72113e';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=cbc040bddb72113e';
+import {createLearningCache} from './learning-cache.js?v=cbc040bddb72113e';
+import {helpableContent, reportableContent} from './content-report.js?v=cbc040bddb72113e';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return x; };
-import {createContentTimer} from './content-timer.js?v=c1033c370c1469ec';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=c1033c370c1469ec';
-import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=c1033c370c1469ec';
-import {chunkPeek} from './memory-chunk.js?v=c1033c370c1469ec';
-import {pointAssessment} from './point-assessment.js?v=c1033c370c1469ec';
-import {trainingAudio} from './training-audio.js?v=c1033c370c1469ec';
+import {createContentTimer} from './content-timer.js?v=cbc040bddb72113e';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=cbc040bddb72113e';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=cbc040bddb72113e';
+import {chunkPeek} from './memory-chunk.js?v=cbc040bddb72113e';
+import {pointAssessment} from './point-assessment.js?v=cbc040bddb72113e';
+import {trainingAudio} from './training-audio.js?v=cbc040bddb72113e';
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);
@@ -235,7 +235,7 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
     const e = epoch; busy = true; clock();
     try {
       const item = state.items[selected];
-      item.self_rating = rating; item.answer = `自主评分：${rating}`;
+      item.self_rating = rating; item.answer = item.multi_step ? (rating === 5 ? '自主判定：做对' : '自主判定：做错') : `自主评分：${rating}`;
       const draft = {index: selected, answer: item.answer, elapsed_ms: item.elapsed_ms, self_rating: rating,
         ...(item.multi_step ? {step_id: item.multi_step.current_step_id} : {})};
       dirty.set(selected, draft); save('draft', selected, JSON.stringify(draft));
@@ -276,7 +276,12 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
       if (item.content_context) helpableContent(body, item.content_context, `${kind}:${item.content_context.question_id}`, item.content_version);
       return body;
     }}) || stem;
-    if (state.phase === 'answer' && state.can_edit !== false && !item.completed) {
+    if (state.phase === 'answer' && state.can_edit !== false && !item.completed && item.multi_step && item.revealed) {
+      staticStepBlanks(stem, item.interaction);
+      const controls = selfAssessment(item, null, {disabled: !state.can_submit, reveal: revealCurrent, rate: rateCurrent,
+        explanation: html(item.explanation_html)});
+      if (controls) stem.closest('.multiStepPart').append(controls);
+    } else if (state.phase === 'answer' && state.can_edit !== false && !item.completed) {
       const editor = answerEditor(item, stem, item.answer, {formId: 'paperAnswerForm', inputId: 'paperAnswer', submitId: 'paperSubmit'}); input = editor.input;
       const label = item.multi_step ? 'question.submitStep' : state.mode === 'question' ? 'paper.submitOne' : selected < state.items.length - 1 ? 'paper.next' : 'paper.submitAll'; editor.submit.textContent = t(label);
       editor.form.append(editor.bottom); main.append(editor.form);
@@ -291,9 +296,9 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
         explanation: item.revealed ? content(item, 'explanation', item.explanation_html) : null});
       if (controls) main.append(controls);
       if (item.revealed) { editor.submit.hidden = true; if (input.questionControl) input.questionControl.setDisabled(true); else input.disabled = true; }
-    } else if (item.interaction && item.interaction.type !== 'text') {
+    } else if (!item.multi_step && item.interaction && item.interaction.type !== 'text') {
       main.append(questionInput(item.interaction, {id: 'paperReadAnswer', stem, value: item.answer, disabled: true, feedback: item.choice_feedback}).element);
-    } else {
+    } else if (!item.multi_step) {
       const answer = node('textarea', 'answerInput'); answer.value = item.answer; answer.disabled = true;
       answer.rows = 3; answer.setAttribute('aria-label', t('你的答案')); main.append(answer);
     }
@@ -303,7 +308,7 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
       ...(audioTarget && (!item.interaction || item.interaction.type === 'text') ? {
         onTranscript: text => { audioTarget.value = text; audioTarget.dispatchEvent(new Event('input', {bubbles: true})); },
       } : {})});
-    if (audioControl) main.insertBefore(audioControl, stem.nextSibling);
+    if (audioControl) stem.after(audioControl);
     if (item.result) {
       const points = pointAssessment(item.result.assessment_result, item.interaction); if (points) main.append(points);
       const reference = referenceAnswer(item); if (reference) main.append(reference);

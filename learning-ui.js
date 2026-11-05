@@ -1,8 +1,9 @@
-import {t, learningTitle} from './i18n.js?v=c1033c370c1469ec';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=c1033c370c1469ec';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=c1033c370c1469ec';
-import {enhanceTopicContent} from './topic-content.js?v=c1033c370c1469ec';
-import {sourceAttributions} from './memory-chunk.js?v=c1033c370c1469ec';
+import {t, learningTitle} from './i18n.js?v=cbc040bddb72113e';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=cbc040bddb72113e';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=cbc040bddb72113e';
+import {enhanceTopicContent} from './topic-content.js?v=cbc040bddb72113e';
+import {sourceAttributions} from './memory-chunk.js?v=cbc040bddb72113e';
+import {mountPassageBlanks} from './composite-input.js?v=cbc040bddb72113e';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -46,6 +47,22 @@ export function readerContent(html, references) {
   enhanceTopicContent(body, references); return body;
 }
 
+// Revealed, self-rated and unattempted steps keep their source gaps without
+// manufacturing an empty submitted-answer form or an isolated blank number.
+export function staticStepBlanks(stem, interaction) {
+  if (interaction?.type !== 'fill_blank') return;
+  const fields = mountPassageBlanks(stem, interaction.blanks, () => node('span', 'multiStepBlank', '______'));
+  for (const {wrapper, field} of fields) wrapper.replaceWith(field);
+}
+
+function stepAnswer(panel, part, references) {
+  const box = node('div', 'multiStepAnswer');
+  const reference = referenceAnswer(part); if (reference) box.append(reference);
+  if (part.explanation_html) box.append(node('h3', 'exampleExplanationHeader', t('Explanation · 解析')),
+    prepareAnswerContent(readerContent(part.explanation_html, references), {explanation: true}));
+  if (box.childElementCount) panel.append(box);
+}
+
 export function renderMultiStep(target, view, {references, decorate = body => body} = {}) {
   const group = node('div', 'multiStepQuestion');
   group.append(node('p', 'multiStepProgress', t('question.multiStepProgress', {
@@ -59,14 +76,12 @@ export function renderMultiStep(target, view, {references, decorate = body => bo
     if (part.result) {
       panel.append(node('p', part.result.correct ? 'multiStepPassed' : 'multiStepFailed',
         t(part.result.correct ? 'question.stepPassed' : 'question.stepFailed')));
-      if (part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
+      if (part.result.self_rating != null) {
+        staticStepBlanks(body, part.interaction); stepAnswer(panel, part, references);
+      } else if (part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
         id: `step-answer-${part.id}`, value: part.result.answer, stem: body, disabled: true}).element);
       else panel.append(submittedAnswer(part, part.result.answer, part.result.answer_display));
-      if (part.result.self_rating != null && part.interaction?.type !== 'text') {
-        panel.append(node('p', 'inputHint', part.result.answer_display));
-      }
-    } else if (view.finished && part.interaction?.type !== 'text') panel.append(questionInput(part.interaction, {
-      id: `step-answer-${part.id}`, value: '', stem: body, disabled: true}).element);
+    } else if (view.finished) staticStepBlanks(body, part.interaction);
     group.append(panel);
   }
   target.append(group); return currentStem;
@@ -144,10 +159,12 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   const typeField = choiceTypeField(step.interaction); if (typeField) heading.after(typeField);
   if (notice) heading.after(node('p', 'introductionUpdateNotice', notice));
   if (step.multi_step) stem = renderMultiStep(target, step.multi_step, {references, decorate}) || stem;
-  if (showSubmittedInteraction && step.interaction && step.interaction.type !== 'text')
+  const showingStepAnswer = step.multi_step && !step.multi_step.finished && showExplanation && step.explanation_html;
+  if (showingStepAnswer) staticStepBlanks(stem, step.interaction);
+  else if (showSubmittedInteraction && step.interaction && step.interaction.type !== 'text')
     target.append(questionInput(step.interaction, {id: submittedId, stem, value: submittedValue, disabled: true,
       feedback: showExplanation ? referenceSource.choice_feedback : null}).element);
-  if (showAnswer) {
+  if (showAnswer && !step.multi_step) {
     const answer = node('details', 'submittedAnswer');
     answer.append(node('summary', '', t('查看已提交答案')), submittedAnswer(step, step.answer, step.answer_display ?? step.answer)); target.append(answer);
   }
@@ -159,7 +176,9 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
     for (const reason of [feedback.reason, ...(feedback.details || [])].filter(Boolean)) body.append(node('div', 'feedbackReason', reason));
     verdict.append(node('span', 'feedbackIcon', feedback.correct ? '✓' : '!'), body); target.append(verdict);
   }
-  if (showExplanation) {
+  if (showingStepAnswer) {
+    stepAnswer(stem.closest('.multiStepPart'), {...referenceSource, explanation_html: step.explanation_html}, references);
+  } else if (showExplanation) {
     const reference = referenceAnswer(referenceSource); if (reference) target.append(reference);
     if (step.explanation_html) target.append(node('h3', 'exampleExplanationHeader', t('Explanation · 解析')),
       prepareAnswerContent(decorate(readerContent(step.explanation_html, references), 'explanation'), {explanation: true}));

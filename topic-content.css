@@ -1,4 +1,4 @@
-@import url('./vendor/book-font/font.css?v=c1033c370c1469ec');
+@import url('./vendor/book-font/font.css?v=cbc040bddb72113e');
 /* Hallmark · component: answers · existing book typography and semantic colours
  * pre-emit critique: P4 H5 E4 S5 R5 V4 */
 :root {
@@ -39,6 +39,10 @@
 .multiStepPassed { color: var(--answer-true); }
 .multiStepFailed { color: var(--answer-false); }
 .multiStepPart > pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.multiStepBlank { white-space: nowrap; color: var(--muted); }
+.multiStepAnswer, .multiStepCurrent > .selfAssessment { margin-top: 1rem; min-width: 0; }
+.multiStepAnswer .answerContent, .multiStepCurrent > .selfAssessment .answerContent { margin-inline: 0; }
+.multiStepAnswer .exampleExplanationHeader, .multiStepCurrent > .selfAssessment .exampleExplanationHeader { margin-block: 1rem .5rem; }
 .courseContent.reading-outline { --article-font-size: 18px; --article-line-height: 1.75; }
 .courseContent [id^="node-"] { scroll-margin-block: 6rem; }
 .courseContent [id^="node-"]:focus { outline: 2px solid var(--accent, #806449); outline-offset: 4px; }

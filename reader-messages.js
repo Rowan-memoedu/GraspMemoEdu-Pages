@@ -36,6 +36,8 @@ export const readerMessages = {
   "question.selectedOption": ["你的选择", "Your choice"],
   "question.multiStepProgress": ["多步题 · 第 {current} / {total} 步", "Multi step · {current} / {total}"],
   "question.stepPassed": ["本步正确", "Step correct"],
+  "question.didRight": ["做对", "Correct"],
+  "question.didWrong": ["做错", "Incorrect"],
   "question.stepFailed": ["本步有误，后续各问与完整解答已展开", "Incorrect step. Remaining questions and the full solution are shown."],
   "question.submitStep": ["检查本步", "Check this step"],
   "question.moveUp": ["将{side}第 {number} 项上移", "Move {side} item {number} up"],

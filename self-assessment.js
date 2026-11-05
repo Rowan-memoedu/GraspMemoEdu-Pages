@@ -1,6 +1,6 @@
-import {t} from './i18n.js?v=c1033c370c1469ec';
-import {answerEmpty} from './question-input.js?v=c1033c370c1469ec';
-import {prepareLiteralMath} from './math-presentation.js?v=c1033c370c1469ec';
+import {t} from './i18n.js?v=cbc040bddb72113e';
+import {answerEmpty} from './question-input.js?v=cbc040bddb72113e';
+import {prepareLiteralMath} from './math-presentation.js?v=cbc040bddb72113e';
 
 const element = (tag, cls, text) => {
   const node = document.createElement(tag); node.className = cls;
@@ -104,15 +104,17 @@ export function referenceAnswer(question) {
   box.append(prepareAnswerContent(body)); return box;
 }
 
-export function ratingChoices({labels, selected, disabled = false, onRate}) {
+export function ratingChoices({labels, selected, disabled = false, onRate, binary = false}) {
   const ratings = element('div', 'trainingRatings');
-  ratings.style.setProperty('--rating-count', String(labels.length));
-  labels.forEach((label, index) => {
-    const rating = index + 1, control = element('button', `trainingRating rating${rating}`);
+  const choices = binary ? [[5, 'question.didRight'], [1, 'question.didWrong']] : labels.map((label, index) => [index + 1, label]);
+  ratings.style.setProperty('--rating-count', String(choices.length));
+  choices.forEach(([rating, label]) => {
+    const control = element('button', `trainingRating ${binary ? `stepOutcome ${rating === 5 ? 'outcomeCorrect' : 'outcomeIncorrect'}` : `rating${rating}`}`);
     control.type = 'button'; control.disabled = disabled; control.dataset.rating = rating;
     control.setAttribute('aria-pressed', String(selected === rating));
-    control.setAttribute('aria-label', `${rating} · ${t(label)}`); control.title = t(label);
-    control.append(element('span', '', String(rating)), element('small', 'ratingLabel', t(label)),
+    control.setAttribute('aria-label', binary ? t(label) : `${rating} · ${t(label)}`); control.title = t(label);
+    if (binary) control.append(element('span', '', t(label)));
+    else control.append(element('span', '', String(rating)), element('small', 'ratingLabel', t(label)),
       element('small', 'ratingCompactLabel', t(`atomic.ratingShort${rating}`)));
     control.addEventListener('click', async () => {
       control.setAttribute('aria-busy', 'true');
@@ -144,6 +146,6 @@ export function selfAssessment(question, input, {disabled = false, reveal, rate,
   if (explanation) box.append(element('h3', 'exampleExplanationHeader', t('Explanation · 解析')), prepareAnswerContent(explanation, {explanation: true}));
   const labels = ['training.again', 'training.hard', 'training.good', 'training.easy'];
   if (question.can_stop_reviews) labels.push('training.retire');
-  const ratings = ratingChoices({labels, disabled, selected: question.self_rating, onRate: rate});
+  const ratings = ratingChoices({labels, disabled, selected: question.self_rating, onRate: rate, binary: Boolean(question.multi_step)});
   box.append(ratings); return box;
 }

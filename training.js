@@ -1,18 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=c1033c370c1469ec';
-import {answerReady, answerEmpty} from './question-input.js?v=c1033c370c1469ec';
-import {createLearningCache} from './learning-cache.js?v=c1033c370c1469ec';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=c1033c370c1469ec';
-import {helpableContent} from './content-report.js?v=c1033c370c1469ec';
-import {ratingChoices} from './self-assessment.js?v=c1033c370c1469ec';
-import {pointAssessment} from './point-assessment.js?v=c1033c370c1469ec';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=c1033c370c1469ec';
+import {t, translateMessage} from './i18n.js?v=cbc040bddb72113e';
+import {answerReady, answerEmpty} from './question-input.js?v=cbc040bddb72113e';
+import {createLearningCache} from './learning-cache.js?v=cbc040bddb72113e';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=cbc040bddb72113e';
+import {helpableContent} from './content-report.js?v=cbc040bddb72113e';
+import {ratingChoices} from './self-assessment.js?v=cbc040bddb72113e';
+import {pointAssessment} from './point-assessment.js?v=cbc040bddb72113e';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=cbc040bddb72113e';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=c1033c370c1469ec';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=cbc040bddb72113e';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -351,7 +351,7 @@ export function createTrainingView(bridge) {
       group_id: state.group_id, question_id: state.question_id};
     const result = state.phase === 'done' ? state.result : null;
     const feedback = result ? {correct: Boolean(result.stop_requested || result.self_rating > 1 || result.correct),
-      title: result.stop_requested ? t('training.stopped') : result.self_rating ? t('training.selfResult', {rating: t(ratingKeys[result.self_rating])}) : t(result.correct ? 'training.correct' : 'training.incorrect'),
+      title: result.stop_requested ? t('training.stopped') : result.self_rating && !state.multi_step ? t('training.selfResult', {rating: t(ratingKeys[result.self_rating])}) : t(result.correct ? 'training.correct' : 'training.incorrect'),
       reason: result.reason, details: [
         state.stopped && !result.stop_requested ? t('training.stopped') : result.practice_only && !state.stopped ? t('training.practice') : null,
         state.due_at ? t('training.nextDue', {time: formatDate(state.due_at)}) : null]} : null;
@@ -464,19 +464,19 @@ export function createTrainingView(bridge) {
       }
     }
     if (!state.academy && !state.hyperskill && (state.phase === 'shown' || state.phase === 'done' && (state.result.self_rating || state.result.stop_requested))) {
-      const ratings = ratingChoices({labels: ratingKeys.slice(1, state.multi_step ? 5 : undefined),
+      const ratings = ratingChoices({labels: ratingKeys.slice(1), binary: Boolean(state.multi_step),
         selected: state.result?.stop_requested ? 5 : state.result?.self_rating,
         disabled: state.phase === 'done' || !state.can_self_rate || !state.can_submit,
         onRate: async rating => {
           try {
-            const next = rating === 5 ? await post('stop', {attempt_id: state.attempt_id})
+            const next = rating === 5 && !state.multi_step ? await post('stop', {attempt_id: state.attempt_id})
               : await post('rate', {attempt_id: state.attempt_id, rating, elapsed_ms: flushClock(),
                 ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})});
             if (!alive(e, s)) return;
             current = next; await refreshGroup(e, s); if (alive(e, s)) renderQuestion();
           } catch (failure) { if (alive(e, s)) error(main, failure); }
         }});
-      main.append(ratings);
+      (state.phase === 'shown' && state.multi_step ? main.querySelector('.multiStepCurrent') : main).append(ratings);
     }
     if (state.can_learn && state.can_review_early) {
       const redo = button(t('training.redo'), 'secondaryButton trainingRedo', () => select(state.question_id, true));
