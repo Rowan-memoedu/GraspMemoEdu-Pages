@@ -1,4 +1,4 @@
-import {t, getLanguage} from './i18n.js?v=d63aff2a6626000c';
+import {t, getLanguage} from './i18n.js?v=b6395ed9872550db';
 
 export function paperNumber(number) {
   if (getLanguage() !== 'zh-CN') return t('paper.number', {number});

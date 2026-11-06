@@ -1,7 +1,7 @@
-import {t} from './i18n.js?v=d63aff2a6626000c';
-import {prepareLiteralMath} from './math-presentation.js?v=d63aff2a6626000c';
-import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut, passagePresentation, centerPassageControl, preparePassageWorkspace} from './composite-input.js?v=d63aff2a6626000c';
-import {enhanceSourceContent} from './topic-content.js?v=d63aff2a6626000c';
+import {t} from './i18n.js?v=b6395ed9872550db';
+import {prepareLiteralMath} from './math-presentation.js?v=b6395ed9872550db';
+import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut, passagePresentation, centerPassageControl, preparePassageWorkspace} from './composite-input.js?v=b6395ed9872550db';
+import {enhanceSourceContent} from './topic-content.js?v=b6395ed9872550db';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;
@@ -259,7 +259,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
   function mountMatchingBlanks() {
     if (!['left', 'right'].includes(spec.fixed_side)) return;
     passageFields = mountPassageBlanks(stem, spec[spec.fixed_side].map(item => ({id: item.id, label: item.text})), (_control, number) => {
-      const blank = node('span', 'passageBlankValue', '—'); blank.setAttribute('aria-label', t('question.blank', {number}));
+      const blank = node('span', 'passageBlankValue', ''); blank.setAttribute('aria-label', t('question.blank', {number}));
       return blank;
     }, gapOptions);
     for (const item of passageFields) item.wrapper.classList.add('passageBlankStatic');
