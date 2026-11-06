@@ -1,9 +1,9 @@
-import { t, translateMessage, learningTitle } from './i18n.js?v=7fd8892104d9720c';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=7fd8892104d9720c';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=7fd8892104d9720c';
-import {reportableContent} from './content-report.js?v=7fd8892104d9720c';
-import {createLearningCache} from './learning-cache.js?v=7fd8892104d9720c';
-import {enhanceTopicContent} from './topic-content.js?v=7fd8892104d9720c';
+import { t, translateMessage, learningTitle } from './i18n.js?v=36c7e727c5dae4ec';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=36c7e727c5dae4ec';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=36c7e727c5dae4ec';
+import {reportableContent} from './content-report.js?v=36c7e727c5dae4ec';
+import {createLearningCache} from './learning-cache.js?v=36c7e727c5dae4ec';
+import {enhanceTopicContent} from './topic-content.js?v=36c7e727c5dae4ec';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;

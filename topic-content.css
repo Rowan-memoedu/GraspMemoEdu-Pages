@@ -1,4 +1,4 @@
-@import url('./vendor/book-font/font.css?v=7fd8892104d9720c');
+@import url('./vendor/book-font/font.css?v=36c7e727c5dae4ec');
 /* Hallmark · component: answers · existing book typography and semantic colours
  * pre-emit critique: P4 H5 E4 S5 R5 V4 */
 :root {
@@ -7,6 +7,7 @@
   --answer-false: #b42328;
   --answer-true-background: #f0f7f2;
   --answer-false-background: #fff3f2;
+  --english-reading-font: Georgia, "Noto Serif SC", "Source Han Serif SC", serif;
 }
 .answerContent {
   font-family: var(--answer-font); font-size: 19px; line-height: 1.9;

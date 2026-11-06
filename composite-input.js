@@ -66,51 +66,79 @@ const passageNumberButton = (number, controlId, navigate) => {
   button.addEventListener('click', () => navigate(controlId)); return button;
 };
 
-// Reading questions have numbered stems instead of passage gaps. Keep their
-// literal wording and make only an unambiguous source number a navigation link.
-function mountPassageQuestionNumbers(container, controls, navigate, mounted) {
-  if (!container || !navigate) return new Set();
-  const byNumber = new Map(), candidates = new Map(), linked = new Set();
+// Reading prompts belong beside their options. Move only uniquely matched
+// numbered paragraphs/list items; preserve the source's inline Markdown HTML.
+function takePassageQuestions(container, controls, mounted) {
+  if (!container) return new Map();
+  const byNumber = new Map(), candidates = new Map(), prompts = new Map();
   for (const control of controls) {
-    const number = numberLabel(control.label);
+    const number = numberLabel(control.label) || String(control.label || '').match(/^\s*(\d+)[.．、]/)?.[1];
     if (number && !mounted.some(field => field.id === control.id))
       byNumber.set(number, [...(byNumber.get(number) || []), control]);
   }
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-  while (walker.nextNode()) {
-    const text = walker.currentNode, parent = text.parentElement;
-    if (ignoredPassageText(parent)) continue;
-    const block = parent.closest('p,li');
-    const match = text.textContent.match(/^(\s*)(\d{1,3})([.．、]\s+)/);
-    if (!block || !match || !block.textContent.trimStart().startsWith(text.textContent.trimStart())) continue;
-    const choices = byNumber.get(match[2]); if (choices?.length !== 1) continue;
-    candidates.set(choices[0].id, [...(candidates.get(choices[0].id) || []), {text,match,control:choices[0]}]);
+  for (const block of container.querySelectorAll('p')) {
+    if (ignoredPassageText(block) || block.closest('li') || block.querySelector('.passageBlank')) continue;
+    const match = block.textContent.match(/^\s*(?:[(（\[]([0-9]{1,3})[)）\]]|(\d{1,3})[.．、])\s*/);
+    const choices = byNumber.get(match?.[1] || match?.[2]); if (choices?.length !== 1) continue;
+    candidates.set(choices[0].id, [...(candidates.get(choices[0].id) || []), {item:block}]);
   }
   for (const list of container.querySelectorAll('ol')) {
     let number = list.start || 1;
     for (const item of [...list.children].filter(child => child.tagName === 'LI')) {
       if (item.hasAttribute('value')) number = item.value;
       const choices = byNumber.get(String(number));
-      if (choices?.length === 1 && !ignoredPassageText(item)) candidates.set(choices[0].id,
-        [...(candidates.get(choices[0].id) || []), {item,number:String(number),control:choices[0]}]);
+      if (choices?.length === 1 && !ignoredPassageText(item) && !item.querySelector('.passageBlank')) candidates.set(choices[0].id,
+        [...(candidates.get(choices[0].id) || []), {item,number:String(number)}]);
       number += list.reversed ? -1 : 1;
     }
   }
-  for (const matches of candidates.values()) {
+  for (const [id, matches] of candidates) {
     if (matches.length !== 1) continue;
-    const {text,match,control,item,number} = matches[0];
-    if (item) {
-      item.style.listStyle = 'none';
-      const body = item.firstElementChild?.tagName === 'P' ? item.firstElementChild : item;
-      body.prepend(passageNumberButton(number,control.id,navigate),document.createTextNode('. '));
-      linked.add(control.id); continue;
-    }
-    const fragment = document.createDocumentFragment();
-    fragment.append(document.createTextNode(match[1]), passageNumberButton(match[2],control.id,navigate),
-      document.createTextNode(text.textContent.slice(match[1].length+match[2].length)));
-    text.replaceWith(fragment); linked.add(control.id);
+    const {item,number} = matches[0], prompt = node('span', 'passageQuestionPrompt');
+    if (number) prompt.append(document.createTextNode(number + '. '));
+    const body = item.firstElementChild?.tagName === 'P' ? item.firstElementChild : item;
+    while (body.firstChild) prompt.append(body.firstChild);
+    const list = item.parentElement; item.remove();
+    if (list?.tagName === 'OL' && !list.children.length) list.remove();
+    prompts.set(id, prompt);
   }
-  return linked;
+  return prompts;
+}
+
+// The visible text can wrap through a passage while the native select retains
+// its keyboard, option menu and form semantics.
+export function syncPassageField(field, correct) {
+  const wrapper = field.closest?.('.passageBlank');
+  if (!wrapper || document.body?.dataset?.subject !== 'english') return;
+  const text = field.tagName === 'SELECT' ? field.selectedOptions[0]?.dataset.text || ''
+    : field.value ?? field.textContent;
+  wrapper.dataset.filled = String(Boolean(text));
+  if (typeof correct === 'boolean') wrapper.dataset.answerTruth = String(correct);
+  if (field.tagName === 'SELECT') {
+    let display = wrapper.querySelector('.passageBlankDisplay');
+    if (!display) {
+      display = node('span', 'passageBlankDisplay'); display.setAttribute('aria-hidden', 'true');
+      display.addEventListener('click', () => {
+        if (field.disabled) return;
+        field.focus({preventScroll: true});
+        try { field.showPicker?.(); } catch { /* Keyboard selection remains available. */ }
+      });
+      wrapper.append(display); wrapper.classList.add('passageSelectWrap');
+    }
+    display.textContent = text;
+  }
+  if (field.tagName === 'TEXTAREA' && !CSS.supports('field-sizing', 'content')) {
+    field.style.width = `${Math.max(3, text.length + 1)}ch`;
+    field.style.height = 'auto'; field.style.height = `${field.scrollHeight}px`;
+  }
+}
+
+export function passageTextField(className) {
+  const growing = document.body?.dataset?.subject === 'english';
+  const field = node(growing ? 'textarea' : 'input', className);
+  if (growing) { field.rows = 1; field.classList.add('passageGrowingText'); }
+  else field.type = 'text';
+  return field;
 }
 
 // Only presentation metadata participates in linking. Explicit IDs win; legacy
@@ -205,7 +233,8 @@ export function passageSelect(control, number, {formId, disabled = false} = {}) 
   field.setAttribute('aria-label', control.label || `第 ${number} 空`); field.disabled = disabled;
   if (formId) field.setAttribute('form', formId);
   control.options.forEach((option, index) => {
-    const item = node('option', '', `${String.fromCharCode(65 + index)} · ${option.text}`); item.value = option.id; field.append(item);
+    const item = node('option', '', `${String.fromCharCode(65 + index)} · ${option.text}`);
+    item.value = option.id; item.dataset.text = option.text; field.append(item);
   });
   field.selectedIndex = -1;
   return field;
@@ -217,11 +246,13 @@ export function answerShortcut(event, formId, disabled = false) {
   }
 }
 
-export function compositeInput(spec, {id, value = '', stem, disabled = false, formId} = {}) {
+export function compositeInput(spec, {id, value = '', stem, disabled = false, formId, feedback, assessment} = {}) {
   const root = node('div', 'questionInteraction compositeInteraction');
   const input = node('textarea', 'structuredAnswer'); input.id = id; input.name = 'answer';
   input.hidden = true; input.disabled = disabled; root.append(input);
   const presentation = passagePresentation(spec);
+  const expected = new Map((feedback?.items || []).map(item => [item.id, item]));
+  const results = new Map((assessment?.items || []).map(item => [item.id, item.correct]));
   const split = preparePassageWorkspace(stem, spec);
   const navigate = split ? controlId => centerPassageControl(root, controlId) : undefined;
   const gapOptions = {numbered: presentation.numbered, showNumbers: presentation.numbered, navigate};
@@ -244,6 +275,7 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
   const sync = () => {
     for (const {id: controlId, field} of [...stemFields, ...sectionFields]) {
       field.value = values[controlId]; field.disabled = !enabled(controlId);
+      syncPassageField(field, disabled ? results.get(controlId) : undefined);
     }
     for (const field of root.querySelectorAll('input')) {
       if (field.type === 'radio') field.checked = values[field.dataset.controlId] === field.value;
@@ -259,10 +291,10 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
   };
   const inlineField = (control, number) => {
     const field = control.type === 'select' ? passageSelect(control, number, {formId})
-      : node('input', 'compositeField passageBlankField passageBlankText');
+      : passageTextField('compositeField passageBlankField passageBlankText');
     field.dataset.controlId = control.id;
     if (control.type !== 'select') {
-      field.type = 'text'; field.autocomplete = 'off'; field.maxLength = 2000;
+      field.autocomplete = 'off'; field.maxLength = 2000;
       field.setAttribute('aria-label', control.label || `第 ${number} 空`);
       if (formId) field.setAttribute('form', formId);
       if (control.input_type === 'number') field.inputMode = 'decimal';
@@ -272,7 +304,7 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
     return field;
   };
   const stemFields = mountPassageBlanks(stem, spec.controls, inlineField, gapOptions);
-  const stemLinks = mountPassageQuestionNumbers(stem, spec.controls, navigate, stemFields);
+  const stemPrompts = split ? takePassageQuestions(stem, spec.controls, stemFields) : new Map();
   root.addEventListener('keydown', event => answerShortcut(event, formId, disabled));
   function render() {
     root.querySelector('.compositeBody')?.remove();
@@ -285,31 +317,29 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
       if (spec.sections.length > 1) panel.append(node('p', 'stepCounter', `${index + 1} / ${spec.sections.length}`));
       const text = node('div', 'courseContent'); text.innerHTML = part.html; (sourceSections || panel).append(text);
       const localFields = mountPassageBlanks(text, spec.controls.filter(c => part.control_ids.includes(c.id)), inlineField, gapOptions);
-      const localLinks = mountPassageQuestionNumbers(text, spec.controls, navigate, localFields);
+      const localPrompts = split ? takePassageQuestions(text, spec.controls, localFields) : new Map();
       sectionFields.push(...localFields);
-      if (split) {
-        const navigation = node('nav', 'passageQuestionNav'); navigation.setAttribute('aria-label', '题号定位');
-        for (const control of spec.controls.filter(c => part.control_ids.includes(c.id))) {
-          if (stemLinks.has(control.id) || localLinks.has(control.id)
-              || [...stemFields, ...localFields].some(field => field.id === control.id)) continue;
-          const number = numberLabel(control.label) || String(control.label || '').match(/^\s*[（(\[]?(\d+)/)?.[1]
-            || String(spec.controls.indexOf(control) + 1);
-          navigation.append(passageNumberButton(number, control.id, navigate));
-        }
-        if (navigation.childElementCount) sourceSections.append(navigation);
-      }
       for (const control of spec.controls.filter(c => part.control_ids.includes(c.id))) {
         if (control.type === 'select') {
           const group = node('fieldset', 'compositeControl compositeChoiceControl');
           group.id = `${id}-${control.id}`; group.dataset.controlId = control.id; group.disabled = disabled;
           group.dataset.answerControl = control.id;
           const label = node('legend', 'compositeLabel', control.label || control.id); label.id = `${group.id}-label`;
+          const prompt = localPrompts.get(control.id) || stemPrompts.get(control.id);
+          if (prompt) label.replaceChildren(prompt);
           const list = node('div', 'choiceList'); list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-labelledby', label.id);
+          // Content length and the answer pane's actual width both govern density.
+          const longest = Math.max(...control.options.map(option => option.text.length));
+          list.dataset.optionLength = longest > 46 ? 'long' : longest > 10 ? 'medium' : longest > 6 ? 'short' : 'compact';
           control.options.forEach((option, optionIndex) => {
             const choice = node('label', 'choiceOption'), radio = node('input', '');
             radio.type = 'radio'; radio.name = group.id; radio.value = option.id;
             radio.dataset.controlId = control.id;
             radio.disabled = disabled; radio.checked = values[control.id] === option.id;
+            choice.dataset.optionId = option.id;
+            const answerIds = expected.get(control.id)?.correct_ids;
+            if (disabled && answerIds && (answerIds.includes(option.id) || radio.checked))
+              choice.dataset.answerTruth = String(answerIds.includes(option.id));
             if (formId) radio.setAttribute('form', formId);
             const content = node('span', 'choiceBody');
             // Rich option HTML uses the same compiled, sanitized source as the question.

@@ -1,6 +1,7 @@
-import {t} from './i18n.js?v=7fd8892104d9720c';
-import {answerEmpty} from './question-input.js?v=7fd8892104d9720c';
-import {prepareLiteralMath} from './math-presentation.js?v=7fd8892104d9720c';
+import {t} from './i18n.js?v=36c7e727c5dae4ec';
+import {answerEmpty} from './question-input.js?v=36c7e727c5dae4ec';
+import {prepareLiteralMath} from './math-presentation.js?v=36c7e727c5dae4ec';
+import {answerAssessment} from './point-assessment.js?v=36c7e727c5dae4ec';
 
 const element = (tag, cls, text) => {
   const node = document.createElement(tag); node.className = cls;
@@ -98,7 +99,37 @@ export function referenceAnswer(question) {
   const box = element('section', 'referenceAnswer');
   box.append(element('h3', 'exampleExplanationHeader', t('training.referenceAnswer')));
   const body = element('div', 'courseContent referenceAnswerBody');
-  if (question.reference_answer_html) body.innerHTML = question.reference_answer_html;
+  const spec = question.interaction || question.question?.interaction;
+  const items = question.choice_feedback?.items;
+  if (items?.length && document.body?.dataset?.subject === 'english') {
+    const results = new Map((answerAssessment(question)?.items || [])
+      .filter(item => typeof item.correct === 'boolean').map(item => [item.id, item.correct]));
+    const controls = spec.controls || spec.blanks || spec[spec.fixed_side] || [];
+    body.classList.add('referenceItems');
+    for (const item of items) {
+      const control = controls.find(c => c.id === item.id); if (!control) continue;
+      const row = element('div', 'referenceItem'); row.dataset.controlId = item.id;
+      const label = control.label || control.text || String(controls.indexOf(control) + 1);
+      const number = label.match(/^(?:\(|\[|（)?(\d+)(?:[.)\]）、]|$)/)?.[1];
+      row.append(element('span', 'referenceItemNumber', number || label));
+      const answer = element('span', 'referenceItemAnswer');
+      const correct = results.get(item.id);
+      if (typeof correct === 'boolean') answer.dataset.answerTruth = String(correct);
+      const options = control.options || (spec.type === 'matching' ? spec[spec.fixed_side === 'left' ? 'right' : 'left'] : null);
+      if (options && item.correct_ids?.length) {
+        const option = options.find(option => item.correct_ids.includes(option.id));
+        if (option) {
+          answer.append(element('span', 'referenceLetter', String.fromCharCode(65 + options.indexOf(option))));
+          if (correct !== true) {
+            const text = element('span', 'referenceOptionText');
+            if (option.html) text.innerHTML = option.html; else text.textContent = option.text;
+            answer.append(document.createTextNode(' · '), text);
+          }
+        }
+      } else answer.textContent = item.answer || '';
+      row.append(answer); body.append(row);
+    }
+  } else if (question.reference_answer_html) body.innerHTML = question.reference_answer_html;
   else body.textContent = question.reference_answer;
   if (question.reference_math_css) { const style = element('style', ''); style.textContent = question.reference_math_css; box.append(style); }
   box.append(prepareAnswerContent(body)); return box;
