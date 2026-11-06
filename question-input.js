@@ -1,7 +1,7 @@
-import {t} from './i18n.js?v=cbc040bddb72113e';
-import {prepareLiteralMath} from './math-presentation.js?v=cbc040bddb72113e';
-import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut} from './composite-input.js?v=cbc040bddb72113e';
-import {enhanceSourceContent} from './topic-content.js?v=cbc040bddb72113e';
+import {t} from './i18n.js?v=d63aff2a6626000c';
+import {prepareLiteralMath} from './math-presentation.js?v=d63aff2a6626000c';
+import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut, passagePresentation, centerPassageControl, preparePassageWorkspace} from './composite-input.js?v=d63aff2a6626000c';
+import {enhanceSourceContent} from './topic-content.js?v=d63aff2a6626000c';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;
@@ -34,6 +34,10 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
     answerShortcut(event, formId, disabled);
   });
   let values = parse(value), emitting = false, selected = null, passageFields = [];
+  const presentation = passagePresentation(spec);
+  const split = preparePassageWorkspace(stem, spec);
+  const gapOptions = {numbered: presentation.numbered, showNumbers: presentation.numbered,
+    navigate: split ? key => centerPassageControl(root, key) : undefined};
   const syncPassage = () => {
     for (const {id: key, field} of passageFields) {
       if (spec.type === 'matching') continue;
@@ -103,6 +107,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
     const rows = node('div', 'matchingRows');
     values.forEach((pair, index) => {
       const row = node('div', 'matchingRow');
+      if (spec.fixed_side) row.dataset.answerControl = spec.fixed[index];
       for (const side of ['left', 'right']) {
         if (side === 'right') {
           const arrow = node('span', 'matchingArrow', spec.direction === 'both' ? '↔' : '→');
@@ -234,7 +239,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
       field.addEventListener('input', () => { if (!disabled) { values[blank.id] = field.value; syncPassage(); emit(); } });
       field.addEventListener('keydown', event => answerShortcut(event, formId, disabled));
       return field;
-    });
+    }, gapOptions);
     syncPassage();
   }
   function mountChoiceBlank() {
@@ -256,7 +261,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
     passageFields = mountPassageBlanks(stem, spec[spec.fixed_side].map(item => ({id: item.id, label: item.text})), (_control, number) => {
       const blank = node('span', 'passageBlankValue', '—'); blank.setAttribute('aria-label', t('question.blank', {number}));
       return blank;
-    });
+    }, gapOptions);
     for (const item of passageFields) item.wrapper.classList.add('passageBlankStatic');
   }
   normalize();

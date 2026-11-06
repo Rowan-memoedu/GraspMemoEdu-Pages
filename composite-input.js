@@ -24,9 +24,51 @@ const taskParagraph = text => /^(?:(?:read|choose|select|fill|complete|match|ans
   && /\b(?:gap|blank|option|sentence|question|answer|passage|paragraph)\b|空|缺口|选|選|题|題|填/i.test(text);
 const ignoredPassageText = element => element?.closest?.('code,pre,kbd,samp,script,style,textarea,input,select,button,label,legend,svg,math,mjx-container,.MathJax,.passageBlank');
 
+// This is a presentation policy only: answer IDs, grading and scheduling stay shared.
+export function passagePresentation(spec) {
+  const english = document.body?.dataset?.subject === 'english';
+  const controls = spec?.controls || spec?.blanks || (spec?.fixed_side ? spec[spec.fixed_side] : []) || [];
+  return {
+    numbered: english && controls.some(control => numberLabel(control.label || control.text)),
+    split: english && (spec?.type === 'composite' && spec.controls.some(control => control.type === 'select')
+      || spec?.type === 'matching' && ['left', 'right'].includes(spec.fixed_side)),
+  };
+}
+
+export function preparePassageWorkspace(stem, spec) {
+  if (!passagePresentation(spec).split || !stem?.parentElement) return false;
+  stem.parentElement.classList.add('passageWorkspace');
+  stem.classList.add('passageQuestionPane');
+  stem.setAttribute('role', 'region'); stem.setAttribute('aria-label', '题目正文'); stem.tabIndex = 0;
+  return true;
+}
+
+export function centerPassageControl(root, controlId) {
+  const target = [...root.querySelectorAll('[data-answer-control]')].find(item => item.dataset.answerControl === controlId);
+  const workspace = root.closest('.passageWorkspace');
+  const pane = workspace && [...workspace.children].find(item => item === root || item.contains(root));
+  if (!target || !pane) return;
+  const position = () => pane.scrollTop + target.getBoundingClientRect().top - pane.getBoundingClientRect().top
+    - pane.clientTop - (pane.clientHeight - target.getBoundingClientRect().height) / 2;
+  // Give the first and last answer enough scroll space to center as well.
+  const top = position(), style = getComputedStyle(pane);
+  if (top < 0) pane.style.paddingTop = `${parseFloat(style.paddingTop) - top}px`;
+  const excess = position() - (pane.scrollHeight - pane.clientHeight);
+  if (excess > 0) pane.style.paddingBottom = `${parseFloat(style.paddingBottom) + excess}px`;
+  root.querySelectorAll('.passageAnswerCurrent').forEach(item => item.classList.remove('passageAnswerCurrent'));
+  target.classList.add('passageAnswerCurrent'); target.tabIndex = -1; target.focus({preventScroll: true});
+  pane.scrollTo({top: position(), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+}
+
+const passageNumberButton = (number, controlId, navigate) => {
+  const button = node('button', 'passageBlankNumber passageNumberLink', number); button.type = 'button';
+  button.dataset.passageTarget = controlId; button.setAttribute('aria-label', `定位第 ${number} 题`);
+  button.addEventListener('click', () => navigate(controlId)); return button;
+};
+
 // Only presentation metadata participates in linking. Explicit IDs win; legacy
 // numbers must have an unambiguous label and one non-instruction occurrence.
-export function mountPassageBlanks(container, controls, createField, {numbered = true, bare = false} = {}) {
+export function mountPassageBlanks(container, controls, createField, {numbered = true, bare = false, showNumbers = false, navigate} = {}) {
   if (!container) return [];
   const byId = new Map(controls.map(control => [control.id, control])), mounted = [], explicit = new Set(), targets = [];
   const inside = element => {
@@ -36,9 +78,13 @@ export function mountPassageBlanks(container, controls, createField, {numbered =
   const make = (control, number = null) => {
     number ||= numberLabel(control.label) || String(controls.indexOf(control) + 1);
     const wrapper = node('span', 'passageBlank'); wrapper.dataset.passageId = control.id;
-    const badge = node('span', 'passageBlankNumber', number); badge.setAttribute('aria-hidden', 'true');
     const field = createField(control, number);
-    wrapper.append(badge, field); mounted.push({id: control.id, wrapper, field, number}); return wrapper;
+    if (showNumbers) {
+      const badge = navigate ? passageNumberButton(number, control.id, navigate) : node('span', 'passageBlankNumber', number);
+      if (!navigate) badge.setAttribute('aria-hidden', 'true');
+      wrapper.append(badge);
+    }
+    wrapper.append(field); mounted.push({id: control.id, wrapper, field, number}); return wrapper;
   };
   const elementTargets = [...container.querySelectorAll('[data-control]')].filter(marker => byId.has(marker.dataset.control) && !ignoredPassageText(marker));
   for (const marker of elementTargets) explicit.add(marker.dataset.control);
@@ -111,10 +157,10 @@ export function passageSelect(control, number, {formId, disabled = false} = {}) 
   const field = node('select', 'passageBlankField passageBlankSelect'); field.dataset.controlId = control.id;
   field.setAttribute('aria-label', control.label || `第 ${number} 空`); field.disabled = disabled;
   if (formId) field.setAttribute('form', formId);
-  const empty = node('option', '', '—'); empty.value = ''; field.append(empty);
   control.options.forEach((option, index) => {
     const item = node('option', '', `${String.fromCharCode(65 + index)} · ${option.text}`); item.value = option.id; field.append(item);
   });
+  field.selectedIndex = -1;
   return field;
 }
 
@@ -128,6 +174,12 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
   const root = node('div', 'questionInteraction compositeInteraction');
   const input = node('textarea', 'structuredAnswer'); input.id = id; input.name = 'answer';
   input.hidden = true; input.disabled = disabled; root.append(input);
+  const presentation = passagePresentation(spec);
+  const split = preparePassageWorkspace(stem, spec);
+  const navigate = split ? controlId => centerPassageControl(root, controlId) : undefined;
+  const gapOptions = {numbered: presentation.numbered, showNumbers: presentation.numbered, navigate};
+  const sourceSections = split ? node('div', 'passageSourceSections') : null;
+  if (sourceSections) stem.append(sourceSections);
   let draft; try { draft = JSON.parse(value); } catch { draft = {}; }
   let section = Math.max(0, Math.min(spec.sections.length - 1, Number.isInteger(draft?.section) ? draft.section : 0));
   let values = Object.fromEntries(spec.controls.map(c => [c.id, typeof draft?.values?.[c.id] === 'string' ? draft.values[c.id] : '']));
@@ -172,23 +224,35 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
     field.addEventListener('keydown', event => answerShortcut(event, formId, field.disabled));
     return field;
   };
-  const stemFields = mountPassageBlanks(stem, spec.controls, inlineField);
+  const stemFields = mountPassageBlanks(stem, spec.controls, inlineField, gapOptions);
   root.addEventListener('keydown', event => answerShortcut(event, formId, disabled));
   function render() {
     root.querySelector('.compositeBody')?.remove();
+    sourceSections?.replaceChildren();
     sectionFields = [];
     const body = node('div', 'compositeBody');
     const indexes = disabled ? spec.sections.map((_, i) => i) : [section];
     for (const index of indexes) {
       const part = spec.sections[index], panel = node('section', 'compositeSection');
       if (spec.sections.length > 1) panel.append(node('p', 'stepCounter', `${index + 1} / ${spec.sections.length}`));
-      const text = node('div', 'courseContent'); text.innerHTML = part.html; panel.append(text);
-      const localFields = mountPassageBlanks(text, spec.controls.filter(c => part.control_ids.includes(c.id)), inlineField);
+      const text = node('div', 'courseContent'); text.innerHTML = part.html; (sourceSections || panel).append(text);
+      const localFields = mountPassageBlanks(text, spec.controls.filter(c => part.control_ids.includes(c.id)), inlineField, gapOptions);
       sectionFields.push(...localFields);
+      if (split) {
+        const navigation = node('nav', 'passageQuestionNav'); navigation.setAttribute('aria-label', '题号定位');
+        for (const control of spec.controls.filter(c => part.control_ids.includes(c.id))) {
+          if ([...stemFields, ...localFields].some(field => field.id === control.id)) continue;
+          const number = numberLabel(control.label) || String(control.label || '').match(/^\s*[（(\[]?(\d+)/)?.[1]
+            || String(spec.controls.indexOf(control) + 1);
+          navigation.append(passageNumberButton(number, control.id, navigate));
+        }
+        if (navigation.childElementCount) sourceSections.append(navigation);
+      }
       for (const control of spec.controls.filter(c => part.control_ids.includes(c.id))) {
         if (control.type === 'select') {
           const group = node('fieldset', 'compositeControl compositeChoiceControl');
           group.id = `${id}-${control.id}`; group.dataset.controlId = control.id; group.disabled = disabled;
+          group.dataset.answerControl = control.id;
           const label = node('legend', 'compositeLabel', control.label || control.id); label.id = `${group.id}-label`;
           const list = node('div', 'choiceList'); list.setAttribute('role', 'radiogroup'); list.setAttribute('aria-labelledby', label.id);
           control.options.forEach((option, optionIndex) => {
@@ -206,6 +270,7 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
           group.append(label, list); panel.append(group);
         } else if (![...stemFields, ...localFields].some(field => field.id === control.id)) {
           const wrap = node('label', 'compositeControl compositeTextControl');
+          wrap.dataset.answerControl = control.id;
           const label = node('span', 'compositeLabel', control.label || control.id), field = node('input', 'compositeField');
           field.id = `${id}-${control.id}`; field.disabled = disabled; field.dataset.controlId = control.id;
           field.setAttribute('aria-label', control.label || control.id); if (formId) field.setAttribute('form', formId);

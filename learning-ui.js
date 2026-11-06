@@ -1,9 +1,9 @@
-import {t, learningTitle} from './i18n.js?v=cbc040bddb72113e';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=cbc040bddb72113e';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=cbc040bddb72113e';
-import {enhanceTopicContent} from './topic-content.js?v=cbc040bddb72113e';
-import {sourceAttributions} from './memory-chunk.js?v=cbc040bddb72113e';
-import {mountPassageBlanks} from './composite-input.js?v=cbc040bddb72113e';
+import {t, learningTitle} from './i18n.js?v=d63aff2a6626000c';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=d63aff2a6626000c';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=d63aff2a6626000c';
+import {enhanceTopicContent} from './topic-content.js?v=d63aff2a6626000c';
+import {sourceAttributions} from './memory-chunk.js?v=d63aff2a6626000c';
+import {mountPassageBlanks} from './composite-input.js?v=d63aff2a6626000c';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -292,6 +292,9 @@ export function answerEditor(step, stem, value, {formId = 'answerForm', inputId 
   const form = node('form', 'learningActions answerForm'); form.id = formId;
   const structured = step.interaction && step.interaction.type !== 'text';
   const control = structured ? questionInput(step.interaction, {id: inputId, stem, value, formId}) : null;
+  if (stem?.classList.contains('passageQuestionPane')) {
+    form.setAttribute('role', 'region'); form.setAttribute('aria-label', '选择答案'); form.tabIndex = 0;
+  }
   const label = node(structured ? 'p' : 'label', '', t('你的答案')); label.htmlFor = inputId;
   const input = control?.input || node('textarea', 'answerInput');
   input.id = inputId; input.name = 'answer'; input.rows = 3; input.maxLength = step.interaction?.version === 2 ? 16384 : 2000;
