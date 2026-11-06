@@ -66,6 +66,53 @@ const passageNumberButton = (number, controlId, navigate) => {
   button.addEventListener('click', () => navigate(controlId)); return button;
 };
 
+// Reading questions have numbered stems instead of passage gaps. Keep their
+// literal wording and make only an unambiguous source number a navigation link.
+function mountPassageQuestionNumbers(container, controls, navigate, mounted) {
+  if (!container || !navigate) return new Set();
+  const byNumber = new Map(), candidates = new Map(), linked = new Set();
+  for (const control of controls) {
+    const number = numberLabel(control.label);
+    if (number && !mounted.some(field => field.id === control.id))
+      byNumber.set(number, [...(byNumber.get(number) || []), control]);
+  }
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const text = walker.currentNode, parent = text.parentElement;
+    if (ignoredPassageText(parent)) continue;
+    const block = parent.closest('p,li');
+    const match = text.textContent.match(/^(\s*)(\d{1,3})([.．、]\s+)/);
+    if (!block || !match || !block.textContent.trimStart().startsWith(text.textContent.trimStart())) continue;
+    const choices = byNumber.get(match[2]); if (choices?.length !== 1) continue;
+    candidates.set(choices[0].id, [...(candidates.get(choices[0].id) || []), {text,match,control:choices[0]}]);
+  }
+  for (const list of container.querySelectorAll('ol')) {
+    let number = list.start || 1;
+    for (const item of [...list.children].filter(child => child.tagName === 'LI')) {
+      if (item.hasAttribute('value')) number = item.value;
+      const choices = byNumber.get(String(number));
+      if (choices?.length === 1 && !ignoredPassageText(item)) candidates.set(choices[0].id,
+        [...(candidates.get(choices[0].id) || []), {item,number:String(number),control:choices[0]}]);
+      number += list.reversed ? -1 : 1;
+    }
+  }
+  for (const matches of candidates.values()) {
+    if (matches.length !== 1) continue;
+    const {text,match,control,item,number} = matches[0];
+    if (item) {
+      item.style.listStyle = 'none';
+      const body = item.firstElementChild?.tagName === 'P' ? item.firstElementChild : item;
+      body.prepend(passageNumberButton(number,control.id,navigate),document.createTextNode('. '));
+      linked.add(control.id); continue;
+    }
+    const fragment = document.createDocumentFragment();
+    fragment.append(document.createTextNode(match[1]), passageNumberButton(match[2],control.id,navigate),
+      document.createTextNode(text.textContent.slice(match[1].length+match[2].length)));
+    text.replaceWith(fragment); linked.add(control.id);
+  }
+  return linked;
+}
+
 // Only presentation metadata participates in linking. Explicit IDs win; legacy
 // numbers must have an unambiguous label and one non-instruction occurrence.
 export function mountPassageBlanks(container, controls, createField, {numbered = true, bare = false, showNumbers = false, navigate} = {}) {
@@ -225,6 +272,7 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
     return field;
   };
   const stemFields = mountPassageBlanks(stem, spec.controls, inlineField, gapOptions);
+  const stemLinks = mountPassageQuestionNumbers(stem, spec.controls, navigate, stemFields);
   root.addEventListener('keydown', event => answerShortcut(event, formId, disabled));
   function render() {
     root.querySelector('.compositeBody')?.remove();
@@ -237,11 +285,13 @@ export function compositeInput(spec, {id, value = '', stem, disabled = false, fo
       if (spec.sections.length > 1) panel.append(node('p', 'stepCounter', `${index + 1} / ${spec.sections.length}`));
       const text = node('div', 'courseContent'); text.innerHTML = part.html; (sourceSections || panel).append(text);
       const localFields = mountPassageBlanks(text, spec.controls.filter(c => part.control_ids.includes(c.id)), inlineField, gapOptions);
+      const localLinks = mountPassageQuestionNumbers(text, spec.controls, navigate, localFields);
       sectionFields.push(...localFields);
       if (split) {
         const navigation = node('nav', 'passageQuestionNav'); navigation.setAttribute('aria-label', '题号定位');
         for (const control of spec.controls.filter(c => part.control_ids.includes(c.id))) {
-          if ([...stemFields, ...localFields].some(field => field.id === control.id)) continue;
+          if (stemLinks.has(control.id) || localLinks.has(control.id)
+              || [...stemFields, ...localFields].some(field => field.id === control.id)) continue;
           const number = numberLabel(control.label) || String(control.label || '').match(/^\s*[（(\[]?(\d+)/)?.[1]
             || String(spec.controls.indexOf(control) + 1);
           navigation.append(passageNumberButton(number, control.id, navigate));
