@@ -1,7 +1,7 @@
 // Hallmark · component: answer feedback · theme: existing learning UI.
 // Read-only states: submitted item results and point results; absent results stay absent.
 // Shared feedback for optional item-to-point assessment. Content labels stay authored.
-import {t} from './i18n.js?v=b6395ed9872550db';
+import {t} from './i18n.js?v=1b86111dd2da8616';
 
 // Resolve evidence keys against the same public metadata used by the answer inputs.
 // An unknown key must never become a learner-facing label or an invented result.

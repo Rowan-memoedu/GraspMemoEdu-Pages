@@ -1,7 +1,7 @@
-import {t} from './i18n.js?v=b6395ed9872550db';
-import {prepareLiteralMath} from './math-presentation.js?v=b6395ed9872550db';
-import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut, passagePresentation, centerPassageControl, preparePassageWorkspace} from './composite-input.js?v=b6395ed9872550db';
-import {enhanceSourceContent} from './topic-content.js?v=b6395ed9872550db';
+import {t} from './i18n.js?v=1b86111dd2da8616';
+import {prepareLiteralMath} from './math-presentation.js?v=1b86111dd2da8616';
+import {compositeInput, mountPassageBlanks, passageSelect, answerShortcut, passagePresentation, centerPassageControl, preparePassageWorkspace} from './composite-input.js?v=1b86111dd2da8616';
+import {enhanceSourceContent} from './topic-content.js?v=1b86111dd2da8616';
 
 const node = (tag, cls, text) => {
   const element = document.createElement(tag); element.className = cls;
@@ -198,7 +198,7 @@ export function questionInput(spec, {id, value = '', stem, disabled = false, for
         const expected = feedback.correct_ids.includes(option.id);
         const chosen = radio.checked;
         if (expected || chosen) {
-          label.dataset.answerTruth = String(feedback.select_incorrect ? !expected : expected);
+          label.dataset.answerTruth = String(expected);
           const marks = node('span', 'choiceFeedbackLabels');
           if (expected) marks.append(node('span', 'choiceFeedbackLabel', t('question.expectedOption')));
           if (chosen) marks.append(node('span', 'choiceFeedbackLabel', t('question.selectedOption')));
